@@ -1,0 +1,115 @@
+{
+  "cases": [
+  ],
+  "default": [
+    {
+        "name": "ContainerRegistrySkus",
+        "url": "https://go.microsoft.com/fwlink/?LinkID=855893&clcid=0x409",
+        "allowSynchronousDownload": "false"
+      },
+      {
+        "name": "AppServicePlanSizes",
+        "url": "https://go.microsoft.com/fwlink/?LinkID=2101018&clcid=0x409",
+        "allowSynchronousDownload": "false"
+      },
+      {
+        "name": "SignalRSkus",
+        "url": "https://go.microsoft.com/fwlink/?LinkID=2086050&clcid=0x409"
+      },
+      {
+        "name": "EnvironmentSettings",
+        "url": "https://go.microsoft.com/fwlink/?LinkID=722336&clcid=0x409",
+        "allowSynchronousDownload": "false"
+      },
+      {
+        "name": "MicrosoftWeb.Experience.Configuration",
+        "url": "https://go.microsoft.com/fwlink/?LinkID=836756&clcid=0x409",
+        "allowSynchronousDownload": "false"
+      },
+      {
+        "name": "ScaffoldingPackageVersions",
+        "url": "https://go.microsoft.com/fwlink/?linkid=2225438&clcid=0x409"
+      },
+      {
+        "name": "ScaffoldingTemplates",
+        "url": "https://go.microsoft.com/fwlink/?LinkID=2109020&clcid=0x409"
+      },
+      {
+        "name": "ScaffolderFactoryConfig",
+        "url": "https://go.microsoft.com/fwlink/?LinkID=2047837&clcid=0x409"
+      },
+      {
+        "name": "NuGetPackagesUpgrades",
+        "url": "https://go.microsoft.com/fwlink/?LinkID=875537&clcid=0x409"
+      },
+      {
+        "name": "NetCoreRuntimeSupportSettings",
+        "url": "https://go.microsoft.com/fwlink/?LinkID=2327333&clcid=0x409",
+        "allowSynchronousDownload": false
+      },
+      {
+        "name": "PackageVersions",
+        "url": "https://go.microsoft.com/fwlink/?LinkID=2099561&clcid=0x409"
+      },
+      {
+        "name": "NetCoreToolingSupportSettings",
+        "url": "https://go.microsoft.com/fwlink/?LinkID=2327432&clcid=0x409",
+        "allowSynchronousDownload": false
+      },
+      {
+        "name": "AzureKeyVaultPackageVersions",
+        "url": "https://go.microsoft.com/fwlink/?LinkID=2104402&clcid=0x409"
+      },
+      {
+        "name": "AzureStoragePackageVersions",
+        "url": "https://go.microsoft.com/fwlink/?LinkID=2104403&clcid=0x409"
+      },
+      {
+        "name": "OpenApiPackageVersions",
+        "url": "https://go.microsoft.com/fwlink/?LinkID=2105410&clcid=0x409"
+      },
+      {
+        "name": "GrpcPackageVersions",
+        "url": "https://go.microsoft.com/fwlink/?LinkID=2105310&clcid=0x409"
+      },
+      {
+        "name": "UserSecretsPackageVersions",
+        "url": "https://go.microsoft.com/fwlink/?LinkID=2106042&clcid=0x409"
+      },
+      {
+        "name": "KeyVaultSkus",
+        "url": "https://go.microsoft.com/fwlink/?linkid=2106444&clcid=0x409",
+        "allowSynchronousDownload": "false"
+      },
+      {
+        "name": "PublishConfiguration",
+        "url": "https://go.microsoft.com/fwlink/?linkid=2112200&clcid=0x409",
+        "contentType": "zip",
+        "allowSynchronousDownload": false
+      },
+      {
+        "name": "EnvironmentsConfiguration",
+        "url": "https://go.microsoft.com/fwlink/?linkid=2112100&clcid=0x409",
+        "contentType": "zip",
+        "allowSynchronousDownload": false
+      },
+      {
+        "name": "FeaturesConfiguration",
+        "url": "https://go.microsoft.com/fwlink/?linkid=2113581&clcid=0x409",
+        "contentType": "zip",
+        "allowSynchronousDownload": false
+      },
+      {
+        "name": "AzureConfiguration",
+        "url": "https://go.microsoft.com/fwlink/?linkid=2118283&clcid=0x409",
+        "contentType": "zip",
+        "allowSynchronousDownload": false
+      },
+      {
+        "name": "MigrationsConfiguration",
+        "url": "https://go.microsoft.com/fwlink/?linkid=2113581&clcid=0x409",
+        "contentType": "zip",
+        "allowSynchronousDownload": false
+      }
+  ]
+}

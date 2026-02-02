@@ -1,0 +1,44 @@
+{
+  "classes": [
+    {
+      "id": 11,
+      "name": "Gladiator",
+      "icon":"/Assets/Classes/gladiator.png"
+    },
+    {
+      "id": 18,
+      "name": "Chanter",
+      "icon": "/Assets/Classes/chanter.png"
+    },
+    {
+      "id": 13,
+      "name": "Assassin",
+      "icon": "/Assets/Classes/assassin.png"
+    },
+    {
+      "id": 14,
+      "name": "Ranger",
+      "icon": "/Assets/Classes/ranger.png"
+    },
+    {
+      "id": 15,
+      "name": "Sorcerer",
+      "icon": "/Assets/Classes/sorcerer.png"
+    },
+    {
+      "id": 16,
+      "name": "Elementalist",
+      "icon":  "/Assets/Classes/elementalist.png"
+    },
+    {
+      "id": 17,
+      "name": "Cleric",
+      "icon": "/Assets/Classes/cleric.png"
+    },
+    {
+      "id": 12,
+      "name": "Templar",
+      "icon": "/Assets/Classes/templar.png"
+    }
+  ]
+}
