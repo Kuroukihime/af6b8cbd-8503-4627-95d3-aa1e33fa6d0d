@@ -67,7 +67,7 @@ namespace AionDpsMeter.Services.PacketProcessors
 
                 if (packetsResult.RemainingSegments != null)
                 {
-                    ProcessRemainingSegments(packetsResult.RemainingSegments);
+                   // ProcessRemainingSegments(packetsResult.RemainingSegments);
                 }
             }
             catch (Exception ex)
@@ -397,11 +397,11 @@ namespace AionDpsMeter.Services.PacketProcessors
         private void LogAndProcessDamage(byte[] packet, DamagePacketData damageData, PlayerDamage playerDamage)
         {
             LogDamageDetails(packet, damageData, playerDamage);
-
-            if (playerDamage.Damage >= MinDamageThreshold)
-            {
-                DamageReceived?.Invoke(this, playerDamage);
-            }
+            DamageReceived?.Invoke(this, playerDamage);
+            //if (playerDamage.Damage >= MinDamageThreshold)
+            //{
+            //    DamageReceived?.Invoke(this, playerDamage);
+            //}
         }
 
         private void LogDamageDetails(byte[] packet, DamagePacketData damageData, PlayerDamage playerDamage)

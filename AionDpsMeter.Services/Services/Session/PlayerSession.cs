@@ -42,16 +42,16 @@ namespace AionDpsMeter.Services.Services.Session
 
         public void AddDamage(PlayerDamage damage)
         {
-            var validatedDamage = ValidateAndCorrectDamage(damage);
-            if (validatedDamage is null)
-            {
-                logger.LogWarning("Ignored invalid damage for player '{PlayerName}' ({ClassName}): Skill={SkillName}, Damage={Damage}",
-                    PlayerName, ClassName, damage.Skill.Name, damage.Damage);
-                return;
-            }
+            //var validatedDamage = ValidateAndCorrectDamage(damage);
+            //if (validatedDamage is null)
+            //{
+            //    logger.LogWarning("Ignored invalid damage for player '{PlayerName}' ({ClassName}): Skill={SkillName}, Damage={Damage}",
+            //        PlayerName, ClassName, damage.Skill.Name, damage.Damage);
+            //    return;
+            //}
 
-            damageHistory.Add(validatedDamage);
-            CacheSkillDamage(validatedDamage);
+            damageHistory.Add(damage);
+           // CacheSkillDamage(validatedDamage);
         }
        
         private PlayerDamage? ValidateAndCorrectDamage(PlayerDamage damage)
