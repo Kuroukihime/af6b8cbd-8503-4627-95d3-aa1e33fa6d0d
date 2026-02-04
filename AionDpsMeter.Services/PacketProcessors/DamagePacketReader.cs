@@ -119,7 +119,7 @@ namespace AionDpsMeter.Services.PacketProcessors
                 return false;
             }
 
-            if (value != 0 && value != 2) return false;
+            if (value != 0 && value != 2 && value != 4) return false;
 
             FlagFieldBytes = new byte[flagBytes];
             Array.Copy(data, offset, FlagFieldBytes, 0, flagBytes);
