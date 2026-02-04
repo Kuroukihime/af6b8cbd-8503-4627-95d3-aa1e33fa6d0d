@@ -7,6 +7,7 @@ namespace AionDpsMeter.Services.PacketProcessors
     public ref struct DamagePacketReader
     {
         public int BytesProcessed => offset;
+        public byte[] PacketData => data;
         private const byte DamageOpcode1 = 0x04;
         private const byte DamageOpcode2 = 0x38;
         private readonly byte[] data;
