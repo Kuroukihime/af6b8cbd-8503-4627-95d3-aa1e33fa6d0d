@@ -50,9 +50,18 @@ namespace AionDpsMeter.Services.Services.Session
             //    return;
             //}
 
+            //sometimes we still get wrong damage offset so it goes to some abnormal values. Gonna use it till ff-ff stcruture fully solved
+            if (!SanityCheck(damage.Damage))
+            {
+                logger.LogWarning($"Damage sanity check failed! SKill {damage.Skill.Name} Damage: {damage.Damage}");
+                return; 
+            }
             damageHistory.Add(damage);
            // CacheSkillDamage(validatedDamage);
         }
+
+        private bool SanityCheck(long damage) => damage < 300_000;
+       
        
         private PlayerDamage? ValidateAndCorrectDamage(PlayerDamage damage)
         {
