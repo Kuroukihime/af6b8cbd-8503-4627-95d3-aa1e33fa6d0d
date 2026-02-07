@@ -60,7 +60,7 @@ namespace AionDpsMeter.Services.Services.Session
            // CacheSkillDamage(validatedDamage);
         }
 
-        private bool SanityCheck(long damage) => damage < 300_000;
+        private bool SanityCheck(long damage) => damage < 500_000;
        
        
         private PlayerDamage? ValidateAndCorrectDamage(PlayerDamage damage)
