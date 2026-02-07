@@ -39,6 +39,7 @@ namespace AionDpsMeter.UI.ViewModels
 
             // Subscribe to damage events
             this.packetService.DamageReceived += OnPacketReceived;
+            _sessionManager.CombatAutoReset += OnCombatAutoReset;
 
             // Setup update timer for UI refresh (30 FPS)
             _updateTimer = new DispatcherTimer
@@ -70,6 +71,15 @@ namespace AionDpsMeter.UI.ViewModels
         private void OnPacketReceived(object? sender, PlayerDamage damageEvent)
         {
             _sessionManager.ProcessDamageEvent(damageEvent);
+        }
+
+        private void OnCombatAutoReset(object? sender, EventArgs e)
+        {
+            _dispatcher.BeginInvoke(() =>
+            {
+                Players.Clear();
+                CombatDuration = "00:00";
+            });
         }
 
         private void OnUpdateTimerTick(object? sender, EventArgs e)
@@ -115,6 +125,7 @@ namespace AionDpsMeter.UI.ViewModels
         public void Dispose()
         {
             packetService.DamageReceived -= OnPacketReceived;
+            _sessionManager.CombatAutoReset -= OnCombatAutoReset;
             _updateTimer?.Stop();
 
             if (packetService is IDisposable disposable)
