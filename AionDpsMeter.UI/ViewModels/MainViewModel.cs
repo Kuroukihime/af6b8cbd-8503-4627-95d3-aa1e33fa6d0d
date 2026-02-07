@@ -23,7 +23,6 @@ namespace AionDpsMeter.UI.ViewModels
         [ObservableProperty]
         private string _combatDuration = "00:00";
 
-        private DateTime? _combatStartTime;
         private DispatcherTimer? _updateTimer;
 
         // Expose session manager for PlayerDetailsWindow
@@ -56,7 +55,6 @@ namespace AionDpsMeter.UI.ViewModels
         {
             packetService.Start();
             _updateTimer?.Start();
-            _combatStartTime = DateTime.Now;
         }
 
         [RelayCommand]
@@ -66,7 +64,6 @@ namespace AionDpsMeter.UI.ViewModels
             _sessionManager.Reset();
 
             Players.Clear();
-            _combatStartTime = DateTime.Now;
             CombatDuration = "00:00";
         }
 
@@ -111,9 +108,7 @@ namespace AionDpsMeter.UI.ViewModels
 
         private void UpdateCombatDuration()
         {
-            if (_combatStartTime == null) return;
-
-            var duration = DateTime.Now - _combatStartTime.Value;
+            var duration = _sessionManager.GetCombatDuration();
             CombatDuration = duration.ToString(@"mm\:ss");
         }
 

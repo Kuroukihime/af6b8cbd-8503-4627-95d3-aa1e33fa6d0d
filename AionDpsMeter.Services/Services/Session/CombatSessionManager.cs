@@ -10,6 +10,7 @@ namespace AionDpsMeter.Services.Services.Session
         private readonly ConcurrentDictionary<long, PlayerSession> playerSessions = new();
         private readonly object lockObject = new();
         private DateTime? combatStartTime;
+        private DateTime? combatLastHitTime;
         private readonly ILogger<CombatSessionManager> logger;
         private readonly ILoggerFactory loggerFactory;
         public CombatSessionManager(ILoggerFactory loggerFactory)
@@ -48,6 +49,8 @@ namespace AionDpsMeter.Services.Services.Session
                 lock (lockObject)
                 {
                     combatStartTime ??= damageEvent.DateTime;
+                    if (combatLastHitTime == null || damageEvent.DateTime > combatLastHitTime)
+                        combatLastHitTime = damageEvent.DateTime;
 
                     if (damageEvent.Skill.IsEntity)
                     {
@@ -111,6 +114,17 @@ namespace AionDpsMeter.Services.Services.Session
             }
         }
 
+        public TimeSpan GetCombatDuration()
+        {
+            lock (lockObject)
+            {
+                if (combatStartTime == null || combatLastHitTime == null) return TimeSpan.Zero;
+
+                var duration = combatLastHitTime.Value - combatStartTime.Value;
+                return duration > TimeSpan.Zero ? duration : TimeSpan.Zero;
+            }
+        }
+
         public void Reset()
         {
             lock (lockObject)
@@ -119,6 +133,7 @@ namespace AionDpsMeter.Services.Services.Session
                     session.Reset();
                 playerSessions.Clear();
                 combatStartTime = null;
+                combatLastHitTime = null;
             }
         }
     }
