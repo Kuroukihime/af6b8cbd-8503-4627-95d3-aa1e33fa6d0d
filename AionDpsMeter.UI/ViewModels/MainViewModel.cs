@@ -23,7 +23,6 @@ namespace AionDpsMeter.UI.ViewModels
         [ObservableProperty]
         private string _combatDuration = "00:00";
 
-        private DateTime? _combatStartTime;
         private DispatcherTimer? _updateTimer;
 
         // Expose session manager for PlayerDetailsWindow
@@ -40,6 +39,7 @@ namespace AionDpsMeter.UI.ViewModels
 
             // Subscribe to damage events
             this.packetService.DamageReceived += OnPacketReceived;
+            _sessionManager.CombatAutoReset += OnCombatAutoReset;
 
             // Setup update timer for UI refresh (30 FPS)
             _updateTimer = new DispatcherTimer
@@ -56,7 +56,6 @@ namespace AionDpsMeter.UI.ViewModels
         {
             packetService.Start();
             _updateTimer?.Start();
-            _combatStartTime = DateTime.Now;
         }
 
         [RelayCommand]
@@ -66,13 +65,21 @@ namespace AionDpsMeter.UI.ViewModels
             _sessionManager.Reset();
 
             Players.Clear();
-            _combatStartTime = DateTime.Now;
             CombatDuration = "00:00";
         }
 
         private void OnPacketReceived(object? sender, PlayerDamage damageEvent)
         {
             _sessionManager.ProcessDamageEvent(damageEvent);
+        }
+
+        private void OnCombatAutoReset(object? sender, EventArgs e)
+        {
+            _dispatcher.BeginInvoke(() =>
+            {
+                Players.Clear();
+                CombatDuration = "00:00";
+            });
         }
 
         private void OnUpdateTimerTick(object? sender, EventArgs e)
@@ -111,15 +118,14 @@ namespace AionDpsMeter.UI.ViewModels
 
         private void UpdateCombatDuration()
         {
-            if (_combatStartTime == null) return;
-
-            var duration = DateTime.Now - _combatStartTime.Value;
+            var duration = _sessionManager.GetCombatDuration();
             CombatDuration = duration.ToString(@"mm\:ss");
         }
 
         public void Dispose()
         {
             packetService.DamageReceived -= OnPacketReceived;
+            _sessionManager.CombatAutoReset -= OnCombatAutoReset;
             _updateTimer?.Stop();
 
             if (packetService is IDisposable disposable)

@@ -7,11 +7,18 @@ namespace AionDpsMeter.Services.Services.Session
 {
     public sealed class CombatSessionManager
     {
+        private static readonly TimeSpan HardResetThreshold = TimeSpan.FromSeconds(40);
+        private static readonly TimeSpan SoftResetThreshold = TimeSpan.FromSeconds(20);
+
         private readonly ConcurrentDictionary<long, PlayerSession> playerSessions = new();
+        private readonly HashSet<int> knownTargetIds = new();
         private readonly object lockObject = new();
         private DateTime? combatStartTime;
+        private DateTime? combatLastHitTime;
         private readonly ILogger<CombatSessionManager> logger;
         private readonly ILoggerFactory loggerFactory;
+
+        public event EventHandler? CombatAutoReset;
         public CombatSessionManager(ILoggerFactory loggerFactory)
         {
             this.loggerFactory = loggerFactory;
@@ -47,7 +54,22 @@ namespace AionDpsMeter.Services.Services.Session
             {
                 lock (lockObject)
                 {
+                    if (combatLastHitTime != null)
+                    {
+                        var gap = damageEvent.DateTime - combatLastHitTime.Value;
+                        if (gap > HardResetThreshold ||
+                            (gap > SoftResetThreshold && !knownTargetIds.Contains(damageEvent.TargetEntity.Id)))
+                        {
+                            ResetInternal();
+                            CombatAutoReset?.Invoke(this, EventArgs.Empty);
+                        }
+                    }
+
                     combatStartTime ??= damageEvent.DateTime;
+                    if (combatLastHitTime == null || damageEvent.DateTime > combatLastHitTime)
+                        combatLastHitTime = damageEvent.DateTime;
+
+                    knownTargetIds.Add(damageEvent.TargetEntity.Id);
 
                     if (damageEvent.Skill.IsEntity)
                     {
@@ -111,14 +133,32 @@ namespace AionDpsMeter.Services.Services.Session
             }
         }
 
+        public TimeSpan GetCombatDuration()
+        {
+            lock (lockObject)
+            {
+                if (combatStartTime == null || combatLastHitTime == null) return TimeSpan.Zero;
+
+                var duration = combatLastHitTime.Value - combatStartTime.Value;
+                return duration > TimeSpan.Zero ? duration : TimeSpan.Zero;
+            }
+        }
+
+        private void ResetInternal()
+        {
+            foreach (var session in playerSessions.Values)
+                session.Reset();
+            playerSessions.Clear();
+            knownTargetIds.Clear();
+            combatStartTime = null;
+            combatLastHitTime = null;
+        }
+
         public void Reset()
         {
             lock (lockObject)
             {
-                foreach (var session in playerSessions.Values)
-                    session.Reset();
-                playerSessions.Clear();
-                combatStartTime = null;
+                ResetInternal();
             }
         }
     }
