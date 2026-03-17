@@ -30,7 +30,7 @@ namespace AionDpsMeter.Services.Services
             streamBuffer = tcpStreamBuffer;
             entityTracker = new EntityTracker();
 
-            nicknameProcessor = new NicknamePacketProcessor(entityTracker);
+            nicknameProcessor = new NicknamePacketProcessor(entityTracker, loggerFactory.CreateLogger<NicknamePacketProcessor>());
             damagePacketProcessor = new DamagePacketProcessor(entityTracker, loggerFactory.CreateLogger<DamagePacketProcessor>());
 
             damagePacketProcessor.DamageReceived += (s, e) => DamageReceived?.Invoke(this, e);
@@ -60,12 +60,14 @@ namespace AionDpsMeter.Services.Services
             streamBuffer.Clear();       
         }
 
-
+      
         private void OnPacketExtracted(object? sender, byte[] packet)
         {
             try
             {
 
+                logger.LogTrace($"AION PACKET: {BitConverter.ToString(packet)}" );
+                nicknameProcessor.Process(packet);
                 var packetType = DeterminePacketType(packet);
 
                 if (packetType == PacketTypeEnum.P_04_38) damagePacketProcessor.Process04_38(packet);

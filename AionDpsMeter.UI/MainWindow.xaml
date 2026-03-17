@@ -6,7 +6,7 @@
         xmlns:viewmodels="clr-namespace:AionDpsMeter.UI.ViewModels"
         mc:Ignorable="d"
         Title="AION2 DPS Meter" 
-        Height="220" 
+        Height="170" 
         Width="320"
         MinHeight="80"
         MinWidth="200"

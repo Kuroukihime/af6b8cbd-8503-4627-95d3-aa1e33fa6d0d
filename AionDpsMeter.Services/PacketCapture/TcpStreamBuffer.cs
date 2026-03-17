@@ -9,17 +9,19 @@ namespace AionDpsMeter.Services.PacketCapture
         private readonly ConcurrentDictionary<string, PacketAccumulator> _streamAccumulators = new();
         public event EventHandler<byte[]>? PacketExtracted;
         private readonly ILogger<TcpStreamBuffer> logger;
+        private readonly FilePacketWriter? filePacketWriter;
 
-        public TcpStreamBuffer(ILogger<TcpStreamBuffer> logger)
+        public TcpStreamBuffer(ILogger<TcpStreamBuffer> logger, FilePacketWriter? filePacketWriter = null)
         {
             this.logger = logger;
+            this.filePacketWriter = filePacketWriter;
         }
 
         public void AddData(string streamKey, byte[] payload)
         {
 
             var accumulator = _streamAccumulators.GetOrAdd(streamKey, _ => new PacketAccumulator(logger));
-
+            filePacketWriter?.LogPacket(streamKey, payload);
             accumulator.AppendAndProcess(payload, (packet) =>
             {
                 PacketExtracted?.Invoke(this, packet);
@@ -30,6 +32,7 @@ namespace AionDpsMeter.Services.PacketCapture
         {
             foreach (var accumulator in _streamAccumulators.Values) accumulator.Clear();
             _streamAccumulators.Clear();
+            filePacketWriter?.FinalizePacketLogging();
         }
 
         public void ClearStream(string streamKey)

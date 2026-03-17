@@ -107,7 +107,7 @@ namespace AionDpsMeter.Services.Services.Entity
 
         public void Clear()
         {
-            playerEntities.Clear();
+            //playerEntities.Clear();
             summons.Clear();
         }
 
