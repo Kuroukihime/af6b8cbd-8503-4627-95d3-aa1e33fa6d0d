@@ -1,9 +1,9 @@
 ﻿using AionDpsMeter.Core.Data;
 using AionDpsMeter.Core.Models;
 using AionDpsMeter.Services.Extensions;
-using AionDpsMeter.Services.Models;
 using AionDpsMeter.Services.Services.Entity;
 using Microsoft.Extensions.Logging;
+using K4os.Compression.LZ4;
 
 namespace AionDpsMeter.Services.PacketProcessors
 {
@@ -14,7 +14,6 @@ namespace AionDpsMeter.Services.PacketProcessors
         private readonly GameDataProvider gameData;
         private readonly EntityTracker entityTracker;
         private readonly ILogger<DamagePacketProcessor> logger;
-        private readonly PacketExtractor packetExtractor;
         private readonly DamagePacketParser parser;
         private readonly DamagePacketLogger packetLogger;
 
@@ -23,7 +22,6 @@ namespace AionDpsMeter.Services.PacketProcessors
             this.entityTracker = entityTracker ?? throw new ArgumentNullException(nameof(entityTracker));
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.gameData = GameDataProvider.Instance;
-            this.packetExtractor = new PacketExtractor(0x04, 0x38);
             this.parser = new DamagePacketParser(entityTracker, logger);
             this.packetLogger = new DamagePacketLogger(logger);
         }
@@ -45,85 +43,166 @@ namespace AionDpsMeter.Services.PacketProcessors
         public void ProcessFF_FF(byte[] packet)
         {
             logger.LogDebug($"FFFF: {BitConverter.ToString(packet)}");
-            var packetsResult = packetExtractor.ExtractPackets(packet);
-
-            if (packetsResult.Packets != null)
-            {
-                ProcessExtractedPackets(packetsResult.Packets);
-            }
-
-            if (packetsResult.RemainingSegments != null)
-            {
-                ProcessRemainingSegments(packetsResult.RemainingSegments);
-            }
+            FrameLoop(packet.AsSpan(), 0, packet.Length);
         }
 
-        private void ProcessExtractedPackets(List<byte[]> packets)
+        private void FrameLoop(ReadOnlySpan<byte> data, int offset, int length)
         {
-            foreach (var dmgPacket in packets)
-            {
-                var parsed = parser.ParseFullPacket(dmgPacket);
+            int end = offset + length;
+            int pos = offset;
 
-                if (!parsed.IsValid)
+            while (pos < end)
+            {
+                // A byte of 0x00 is a padding / alignment marker.
+                if (data[pos] == 0)
                 {
-                    logger.LogDebug($"[04-38-EXTRACTED] PARSING FAILED {parsed.Result} {BitConverter.ToString(dmgPacket)}");
+                    pos++;
                     continue;
                 }
 
-                CorrectDamageIfNeeded(parsed.Data);
-                ProcessParsedDamage(parsed, "04-38-EXTRACTED");
-            }
-        }
+                // Read LEB-128 varint — this is the inner payload length
+                var varintVal = data.ReadVarInt(pos);
+                int varint = varintVal.Value;
+                int varintLen = varintVal.Length;
 
-        private void ProcessRemainingSegments(List<byte[]> remainingSegments)
-        {
-            foreach (var leftoverBytes in remainingSegments)
-            {
-                ProcessDamagePatterns(leftoverBytes);
-            }
-        }
 
-        private void ProcessDamagePatterns(byte[] packet)
-        {
-            foreach (var entity in entityTracker.PlayerEntities)
-            {
-                ProcessEntityDamagePatterns(packet, entity);
-            }
-        }
+                if (varintLen <= 0) break;
+                if (varint > 2_000_000) break; // sanity cap 
 
-        private void ProcessEntityDamagePatterns(byte[] packet, Entity entity)
-        {
-            try
-            {
-                int currentOffset = 0;
-
-                while (currentOffset < packet.Length)
+                int framePayloadLen = varint + varintLen - 4;
+                if (framePayloadLen <= 0)
                 {
-                    byte[] remainingPacket = packet.Skip(currentOffset).ToArray();
-                    var dmgPatternIndex = FindValidDamagePatternEntityIndex(remainingPacket, entity);
-
-                    if (dmgPatternIndex < 2) break;
-
-                    int absolutePatternIndex = currentOffset + dmgPatternIndex;
-                    var parsed = parser.ParseFromPatternMatch(packet, absolutePatternIndex);
-
-                    if (parsed.IsValid && parsed.Data.Damage > 0)
-                    {
-                        CorrectDamageIfNeeded(parsed.Data);
-                        ProcessParsedDamage(parsed, "FF-FF");
-                    }
-                    else
-                    {
-                        logger.LogTrace($"[FF-FF] PARSING FAILED {parsed.Result} {BitConverter.ToString(packet)}");
-                    }
-
-                    currentOffset = absolutePatternIndex + 4;
+                    pos++;
+                    continue;
                 }
+
+                int frameEnd = pos + framePayloadLen;
+                if (frameEnd > end) break;
+                try
+                {
+                    DispatchOrDecompress(data, pos, framePayloadLen, varintLen);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex.Message, ex);
+                }
+                pos = frameEnd;
             }
-            catch (Exception ex)
+        }
+
+        public void DispatchOrDecompress(ReadOnlySpan<byte> raw, int frameBase, int framePayloadLen, int varintLen)
+        {
+            // ── Step 1: optional flag-byte skip ──────────────────────────────────
+            int headerOffset = varintLen; // points into raw[] relative to frameBase
+
+            if (headerOffset < framePayloadLen)
             {
-                logger.LogError(ex, $"Error processing damage patterns for entity {entity.Name} in packet {BitConverter.ToString(packet)}");
+                byte flagByte = raw[frameBase + headerOffset];
+                // (flagByte & 0xF0) == 0xF0  AND  flagByte != 0xFF
+                if ((flagByte & 0xF0) == 0xF0 && flagByte != 0xFF)
+                    headerOffset++; // skip the flag byte
             }
+
+            // ── Step 2: check for 0xFF 0xFF marker ──────────────────────────────
+            bool isCompressed = framePayloadLen >= headerOffset + 2 &&
+                                raw[frameBase + headerOffset] == 0xFF &&
+                                raw[frameBase + headerOffset + 1] == 0xFF;
+
+            if (!isCompressed)
+            {
+                // Plain (uncompressed) frame — call normal processor
+                ProcessFrame(raw, frameBase + varintLen, framePayloadLen);
+                return;
+            }
+
+            // ── Step 3: read 4-byte LE decompressed size at headerOffset+2 ──────
+            if (framePayloadLen < headerOffset + 6) return;
+
+            int decompBase = frameBase + headerOffset;
+            int decompressedSize =
+                raw[decompBase + 2]
+                | (raw[decompBase + 3] << 8)
+                | (raw[decompBase + 4] << 16)
+                | (raw[decompBase + 5] << 24);
+
+            // Sanity check
+            if ((uint)(decompressedSize - 1) > 0x98967F)
+                return;
+
+            // ── Step 4: compressed payload ──────────────────────────────────────
+            int compPayloadOffset = headerOffset + 6; // a4 + 6  relative to frameBase
+            int compPayloadLen = framePayloadLen - compPayloadOffset;
+            if (compPayloadLen <= 0)
+                return;
+
+            // ── Step 5: decompress ───────────────────────────────────────────────
+            byte[] decompressed = new byte[decompressedSize];
+
+            int actualDecompLen = Decompress(
+                raw.Slice(frameBase + compPayloadOffset, compPayloadLen),
+                decompressed);
+
+            if (actualDecompLen <= 0)
+                return;
+
+            // ── Step 6: recursively process inner frames ─────────────────────────
+            ReadOnlySpan<byte> inner = decompressed.AsSpan(0, actualDecompLen);
+            int innerPos = 0;
+
+            while (innerPos < actualDecompLen)
+            {
+                if (inner[innerPos] == 0x00)
+                {
+                    innerPos++;
+                    continue;
+                }
+
+                var innerVarIntVal = inner.ReadVarInt(innerPos);
+                int innerVarint = innerVarIntVal.Value;
+                int innerVarintLen = innerVarIntVal.Length;
+                if (innerVarintLen <= 0) break;
+                if (innerVarint > 2_000_000) break;
+
+                int innerFramePayloadLen = innerVarint + innerVarintLen - 4;
+                if (innerFramePayloadLen <= 0)
+                {
+                    innerPos++;
+                    continue;
+                }
+
+                int innerFrameEnd = innerPos + innerFramePayloadLen;
+                if (innerFrameEnd > actualDecompLen) break;
+
+                try
+                {
+                    // RECURSIVE call — handles nested 0xFF 0xFF if present
+                    DispatchOrDecompress(inner, innerPos, innerFramePayloadLen,
+                        innerVarintLen);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex.Message, ex);
+                }
+
+                innerPos = innerFrameEnd;
+            }
+        }
+
+        private void ProcessFrame(ReadOnlySpan<byte> data, int offset, int length)
+        {
+            ReadOnlySpan<byte> frame = data.Slice(offset - 1, length);
+
+            if (frame.Length > 2 && frame[1] == 0x04 && frame[2] == 0x38)
+            {
+                Process04_38(frame.ToArray());
+            }
+        }
+
+
+        private static int Decompress(ReadOnlySpan<byte> compressed, byte[] output)
+        {
+            int result = LZ4Codec.Decode(compressed, output.AsSpan());
+            return result;
         }
 
         private void ProcessParsedDamage(ParsedDamagePacket parsed, string packType)
@@ -137,76 +216,6 @@ namespace AionDpsMeter.Services.PacketProcessors
 
             packetLogger.LogParsedDamage(parsed, playerDamage, packType);
             DamageReceived?.Invoke(this, playerDamage);
-        }
-
-        private void CorrectDamageIfNeeded(DamagePacketData data)
-        {
-            if (data.Damage <= 0 || data.Damage > 4) return;
-
-            logger.LogInformation(
-                $"Corrected damage for skill {data.SkillCode} assuming damage block is 1 position left. " +
-                $"Initial: {data.Damage} Corrected: {data.UnknownVarInt}");
-
-            data.Damage = data.UnknownVarInt;
-        }
-
-        private int FindValidDamagePatternEntityIndex(byte[] packet, Entity entity)
-        {
-            var entityIdBytes = GetVarIntBytes(entity.Id);
-            var indexOfEntity = packet.IndexOfArray(entityIdBytes);
-
-            if (indexOfEntity == -1)
-            {
-                return -1;
-            }
-
-            var skillCode = packet.ReadUInt32Le(indexOfEntity + entityIdBytes.Length);
-
-            if (!DataValidationHelper.IsReasonableSkillCode(skillCode))
-            {
-                return -1;
-            }
-
-            var skill = gameData.GetSkillById(skillCode);
-            if (skill == null)
-            {
-                return -1;
-            }
-
-            var skillClass = gameData.GetClassBySkillCode(skillCode);
-            if (skillClass == null || skillClass.Id != entity?.CharacterClass?.Id)
-            {
-                return -1;
-            }
-
-            return indexOfEntity;
-        }
-
-        private byte[] GetVarIntBytes(int value)
-        {
-            if (value < 0)
-            {
-                throw new ArgumentException("Value must be non-negative", nameof(value));
-            }
-
-            Span<byte> buffer = stackalloc byte[5];
-            int count = 0;
-
-            do
-            {
-                int byteValue = value & 0x7F;
-                value >>= 7;
-
-                if (value != 0)
-                {
-                    byteValue |= 0x80;
-                }
-
-                buffer[count++] = (byte)byteValue;
-            }
-            while (value != 0);
-
-            return buffer.Slice(0, count).ToArray();
         }
 
         private PlayerDamage? CreatePlayerDamage(DamagePacketData damageData)

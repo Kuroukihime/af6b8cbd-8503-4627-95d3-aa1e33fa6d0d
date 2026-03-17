@@ -102,10 +102,7 @@ namespace AionDpsMeter.Services.PacketProcessors
             offset += switchBytes;
             int switchVal = switchVar & 0x0F;
 
-            if (switchVal != 4 && switchVal != 6)
-            {
-                return false;
-            }
+            if (switchVal == 0 || (uint)(switchVal - 4) > 3) return false;
 
             switchValue = switchVal;
             return HasRemainingBytes();

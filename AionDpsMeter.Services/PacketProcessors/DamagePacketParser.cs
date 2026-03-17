@@ -30,18 +30,6 @@ namespace AionDpsMeter.Services.PacketProcessors
             return ParsePacketData(reader, targetId);
         }
 
-        public ParsedDamagePacket ParseFromPatternMatch(byte[] packet, int entityIdIndex)
-        {
-            var target = entityTracker.TargetEntities.FirstOrDefault();
-            if (target == null)
-                return CreateFailedResult(new DamagePacketReader(packet), PacketProcessResult.WRONG_LENTH_BYTE);
-
-            if (entityIdIndex < 2)
-                return CreateFailedResult(new DamagePacketReader(packet), PacketProcessResult.WRONG_LENTH_BYTE);
-
-            var reader = new DamagePacketReader(packet, entityIdIndex - 2);
-            return ParsePacketData(reader, target.Id);
-        }
 
         private ParsedDamagePacket ParsePacketData(DamagePacketReader reader, int targetId)
         {

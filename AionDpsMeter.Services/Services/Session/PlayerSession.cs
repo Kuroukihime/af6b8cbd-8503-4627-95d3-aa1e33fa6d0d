@@ -39,19 +39,7 @@ namespace AionDpsMeter.Services.Services.Session
             };
         }
 
-        public void AddDamage(PlayerDamage damage)
-        {
-           
-
-            //sometimes we still get wrong damage offset so it goes to some abnormal values. Gonna use it till ff-ff stcruture fully solved
-            if (!SanityCheck(damage.Damage))
-            {
-                logger.LogWarning($"Damage sanity check failed! SKill {damage.Skill.Name} Damage: {damage.Damage}");
-                return; 
-            }
-            damageHistory.Add(damage);
-         
-        }
+        public void AddDamage(PlayerDamage damage) => damageHistory.Add(damage);
      
         public void UpdateStats(long totalCombatDamage)
         {
@@ -150,6 +138,5 @@ namespace AionDpsMeter.Services.Services.Session
             };
         }
 
-        private bool SanityCheck(long damage) => damage < 500_000;
     }
 }
