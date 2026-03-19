@@ -17,21 +17,26 @@ namespace AionDpsMeter.Services.Services
         private bool isRunning;
         private bool disposed;
 
+        private readonly PacketProcessor packetProcessor;
         private readonly NicknamePacketProcessor nicknameProcessor;
         private readonly DamagePacketProcessor damagePacketProcessor;
 
         public event EventHandler<PlayerDamage>? DamageReceived;
         private ILogger<AionPacketService> logger;
 
-        public AionPacketService(IPacketCaptureDevice captureDevice, TcpStreamBuffer tcpStreamBuffer, ILoggerFactory loggerFactory)
+        public AionPacketService(IPacketCaptureDevice captureDevice, TcpStreamBuffer tcpStreamBuffer,
+            ILoggerFactory loggerFactory)
         {
             this.captureDevice = captureDevice;
             logger = loggerFactory.CreateLogger<AionPacketService>();
             streamBuffer = tcpStreamBuffer;
             entityTracker = new EntityTracker();
 
-            nicknameProcessor = new NicknamePacketProcessor(entityTracker, loggerFactory.CreateLogger<NicknamePacketProcessor>());
-            damagePacketProcessor = new DamagePacketProcessor(entityTracker, loggerFactory.CreateLogger<DamagePacketProcessor>());
+            packetProcessor = new PacketProcessor(loggerFactory.CreateLogger<PacketProcessor>());
+            nicknameProcessor =
+                new NicknamePacketProcessor(entityTracker, loggerFactory.CreateLogger<NicknamePacketProcessor>());
+            damagePacketProcessor =
+                new DamagePacketProcessor(entityTracker, loggerFactory.CreateLogger<DamagePacketProcessor>());
 
             damagePacketProcessor.DamageReceived += (s, e) => DamageReceived?.Invoke(this, e);
             streamBuffer.PacketExtracted += OnPacketExtracted;
@@ -57,54 +62,38 @@ namespace AionDpsMeter.Services.Services
         public void Reset()
         {
             entityTracker.Clear();
-            streamBuffer.Clear();       
+            streamBuffer.Clear();
         }
 
-      
+
         private void OnPacketExtracted(object? sender, byte[] packet)
+        {
+            var frames = packetProcessor.ProcessPacket(packet);
+
+            foreach (var frame in frames)
+            {
+                ProcessFrame(frame);
+            }
+        }
+
+        private void ProcessFrame(PacketProcessor.Packet packet)
         {
             try
             {
-
-                logger.LogTrace($"AION PACKET: {BitConverter.ToString(packet)}" );
-                nicknameProcessor.Process(packet);
-                var packetType = DeterminePacketType(packet);
-
-                if (packetType == PacketTypeEnum.P_04_38) damagePacketProcessor.Process04_38(packet);
-                else if (packetType == PacketTypeEnum.P_FF_FF) damagePacketProcessor.ProcessFF_FF(packet);
+                nicknameProcessor.Process(packet.Data);
+                
+                if (packet.Type == PacketTypeEnum.P_04_38) damagePacketProcessor.Process04_38(packet.Data);
                 else
                 {
-                    logger.LogTrace("UNKNOWN PACKET TYPE {packetType}", packetType);
+                    logger.LogTrace("UNKNOWN PACKET TYPE {packetType}", packet.Type);
                 }
             }
-            catch(Exception ex) 
+            catch (Exception ex)
             {
-                logger.LogError(ex.Message);
+                logger.LogError(ex, "Error processing packet of type {packetType}", packet.Type);
             }
-            //if(CanBeNicknamePacket(packet)) nicknameProcessor.Process(packet);
         }
-
-
-
-        private PacketTypeEnum DeterminePacketType(byte[] packet)
-        {
-
-            var lenValueLength = packet.ReadVarInt().Length;
-            if (lenValueLength < 0 || packet.Length < lenValueLength + 2) return PacketTypeEnum.BROKEN;
-            if (packet[lenValueLength] == 0x04 && packet[lenValueLength + 1] == 0x38) return PacketTypeEnum.P_04_38;
-            if (packet[lenValueLength] == 0xFF && packet[lenValueLength + 1] == 0xFF) return PacketTypeEnum.P_FF_FF;
-            return PacketTypeEnum.UNKNOWN;
-        }
-
-
-
-        private bool CanBeNicknamePacket(byte[] packet)
-        {
-            var packetLengthInfo = packet.ReadVarInt();
-            if (packetLengthInfo.Value <= packet.Length) return false;
-            if (packet.Length < 4 || packet[2] != 0xff || packet[3] != 0xff) return true;
-            return false;
-        }  
+        
 
         public void Dispose()
         {
