@@ -33,7 +33,7 @@ namespace AionDpsMeter.Services.PacketProcessors
 
             if (!parsed.IsValid)
             {
-                logger.LogTrace($"[04-38-FULL] PARSING FAILED {parsed.Result} {BitConverter.ToString(packet)}");
+                logger.LogWarning($"[04-38-FULL] PARSING FAILED {parsed.Result} {BitConverter.ToString(packet)}");
                 return;
             }
 

@@ -116,7 +116,7 @@ namespace AionDpsMeter.Services.PacketProcessors
                 return false;
             }
 
-            if (value != 0 && value != 2 && value != 4) return false;
+            //if (value != 0 && value != 2 && value != 4) return false;
 
             FlagFieldBytes = new byte[flagBytes];
             Array.Copy(data, offset, FlagFieldBytes, 0, flagBytes);
@@ -179,36 +179,49 @@ namespace AionDpsMeter.Services.PacketProcessors
             flags = default;
             offset1 = offset;
 
+
+            var size = GetSpecialBlockSize(switchValue);
+            if (!HasRemainingBytes(size)) return false;
+
             //means special block header is missing
             if (switchValue == 4)
             {
                 if (!HasRemainingBytes(8)) return false;
                 DamageFlagByte = 0;
+                flags = ParseSpecialFlags(DamageFlagByte);
                 UnknownSpecialByte = 0;
+                offset =+ size;
+                return HasRemainingBytes();
+        
             }
-            else
-            {
-                if (!HasRemainingBytes(10)) return false;
-                DamageFlagByte = data[offset];
-                UnknownSpecialByte = data[offset + 1];
-                offset += 2;
-            }
-
+            DamageFlagByte = data[offset];
             flags = ParseSpecialFlags(DamageFlagByte);
-            UnknownUnit32Value = new byte[4];
-            Array.Copy(data, offset, UnknownUnit32Value, 0, 4);
-            offset += 4;
-
-            ControlByte = data[offset];
-            var tailLen = 3;
-            if (ControlByte > 8) tailLen = 2;
-            offset += 1;
-
-            UnknownSpecialBlockTail = new byte[tailLen];
-            Array.Copy(data, offset, UnknownSpecialBlockTail, 0, tailLen);
-            offset += tailLen;
-
+            offset += size;
             return HasRemainingBytes();
+            //else
+            //{
+            //    if (!HasRemainingBytes(10)) return false;
+            //    DamageFlagByte = data[offset];
+            //    UnknownSpecialByte = data[offset + 1];
+            //    offset += 2;
+            //}
+
+            //flags = ParseSpecialFlags(DamageFlagByte);
+            //UnknownUnit32Value = new byte[4];
+            //Array.Copy(data, offset, UnknownUnit32Value, 0, 4);
+            //offset += 4;
+
+            //ControlByte = data[offset];
+            ////size - 2 - 4 - 1
+            //var tailLen = 3;
+            //if (ControlByte > 8) tailLen = 2;
+            //offset += 1;
+
+            //UnknownSpecialBlockTail = new byte[tailLen];
+            //Array.Copy(data, offset, UnknownSpecialBlockTail, 0, tailLen);
+            //offset += tailLen;
+
+            //return HasRemainingBytes();
         }
 
         public bool ReadUnknownVarInt(out int value)
