@@ -1,5 +1,4 @@
 using AionDpsMeter.Core.Models;
-using System.Reflection.Emit;
 
 namespace AionDpsMeter.Services.Services.Entity
 {
@@ -128,6 +127,11 @@ namespace AionDpsMeter.Services.Services.Entity
             return playerEntities.GetValueOrDefault(entityId);
         }
         public Core.Models.Entity? GetTargetEntity(int entityId)
+        {
+            return targetEntities.GetValueOrDefault(entityId);
+        }
+
+        public Mob? GetTargetMob(int entityId)
         {
             return targetEntities.GetValueOrDefault(entityId);
         }

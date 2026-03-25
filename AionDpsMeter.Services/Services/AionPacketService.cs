@@ -1,6 +1,5 @@
 ﻿using AionDpsMeter.Core.Models;
 using AionDpsMeter.Services.PacketCapture;
-using AionDpsMeter.Services.Extensions;
 using AionDpsMeter.Services.PacketProcessors;
 using Microsoft.Extensions.Logging;
 using AionDpsMeter.Services.Models;
@@ -29,13 +28,12 @@ namespace AionDpsMeter.Services.Services
         public event EventHandler<int>? PingUpdated;
         public int CurrentPingMs { get; private set; }
 
-        public AionPacketService(IPacketCaptureDevice captureDevice, TcpStreamBuffer tcpStreamBuffer,
-            ILoggerFactory loggerFactory)
+        public AionPacketService(IPacketCaptureDevice captureDevice, TcpStreamBuffer tcpStreamBuffer, EntityTracker entityTracker, ILoggerFactory loggerFactory)
         {
             this.captureDevice = captureDevice;
             logger = loggerFactory.CreateLogger<AionPacketService>();
             streamBuffer = tcpStreamBuffer;
-            entityTracker = new EntityTracker();
+            this.entityTracker = entityTracker;
 
             packetProcessor = new PacketProcessor(loggerFactory.CreateLogger<PacketProcessor>());
             nicknameProcessor = new NicknamePacketProcessor(entityTracker, loggerFactory.CreateLogger<NicknamePacketProcessor>());

@@ -1,34 +1,33 @@
-ï»¿using AionDpsMeter.Core.Models;
+using AionDpsMeter.Core.Models;
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using AionDpsMeter.Services.Models;
+using AionDpsMeter.Services.Services.Entity;
 
 namespace AionDpsMeter.Services.Services.Session
 {
+    /// <summary>
+    /// Orchestrates a combat session: routes damage events, delegates timeline tracking
+    /// to <see cref="CombatTimelineTracker"/>, active target resolution to
+    /// <see cref="ActiveTargetResolver"/>, and stat computation to <see cref="PlayerSession"/>.
+    /// </summary>
     public sealed class CombatSessionManager
     {
-        private static readonly TimeSpan HardResetThreshold = TimeSpan.FromSeconds(40);
-        private static readonly TimeSpan SoftResetThreshold = TimeSpan.FromSeconds(20);
-        private static readonly TimeSpan ActiveTargetWindow = TimeSpan.FromSeconds(5);
-
         private readonly ConcurrentDictionary<long, PlayerSession> playerSessions = new();
-        private readonly HashSet<int> knownTargetIds = new();
-        private readonly Dictionary<int, int> targetCountBuffer = new();
+        private readonly CombatTimelineTracker timeline = new();
+        private readonly ActiveTargetResolver targetResolver;
         private readonly object lockObject = new();
-        private DateTime? combatStartTime;
-        private DateTime? combatLastHitTime;
-        private int? activeTargetId;
         private readonly ILogger<CombatSessionManager> logger;
-        private readonly ILoggerFactory loggerFactory;
 
         public event EventHandler? CombatAutoReset;
-        public CombatSessionManager(ILoggerFactory loggerFactory)
+
+        public CombatSessionManager(EntityTracker entityTracker, ILoggerFactory loggerFactory)
         {
-            this.loggerFactory = loggerFactory;
+            targetResolver = new ActiveTargetResolver(entityTracker);
             logger = loggerFactory.CreateLogger<CombatSessionManager>();
         }
 
-        private long TotalCombatDamage => playerSessions.Values.Sum(s => s.Stats.TotalDamage);
+       
 
         public IReadOnlyCollection<PlayerStats> PlayerStats
         {
@@ -48,9 +47,10 @@ namespace AionDpsMeter.Services.Services.Session
         {
             lock (lockObject)
             {
-                if (activeTargetId != null && playerSessions.TryGetValue(playerId, out var session))
+                if (targetResolver.ActiveTargetId is { } targetId
+                    && playerSessions.TryGetValue(playerId, out var session))
                 {
-                    var filtered = session.GetDamageHistory(activeTargetId.Value);
+                    var filtered = session.GetDamageHistory(targetId);
                     var result = new List<PlayerDamage>(filtered);
                     result.Reverse();
                     return result;
@@ -59,122 +59,14 @@ namespace AionDpsMeter.Services.Services.Session
             }
         }
 
-        public void ProcessDamageEvent(PlayerDamage damageEvent)
-        {
-            try
-            {
-                lock (lockObject)
-                {
-                    if (combatLastHitTime != null)
-                    {
-                        var gap = damageEvent.DateTime - combatLastHitTime.Value;
-                        if (gap > HardResetThreshold ||
-                            (gap > SoftResetThreshold && !knownTargetIds.Contains(damageEvent.TargetEntity.Id)))
-                        {
-                            ResetInternal();
-                            CombatAutoReset?.Invoke(this, EventArgs.Empty);
-                        }
-                    }
-
-                    combatStartTime ??= damageEvent.DateTime;
-                    if (combatLastHitTime == null || damageEvent.DateTime > combatLastHitTime)
-                        combatLastHitTime = damageEvent.DateTime;
-
-                    knownTargetIds.Add(damageEvent.TargetEntity.Id);
-
-                    if (damageEvent.Skill.IsEntity)
-                    {
-                        ProcessEntityDamageEvent(damageEvent);
-                        return;
-                    }
-
-                    AddDamageEvent(damageEvent);
-                    RecalculateStatistics();
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex.Message, ex);
-            }
-        }
-
-        private void ProcessEntityDamageEvent(PlayerDamage damageEvent)
-        {
-            var entityClassId = damageEvent.Skill.ClassId;
-            var registeredEntitiesOfThisClass = playerSessions.Values.Where(r => r.ClassId == entityClassId).ToList();
-            if (registeredEntitiesOfThisClass.Count == 1)
-            {
-                registeredEntitiesOfThisClass.First().AddDamage(damageEvent);
-                return;
-            }
-            // If there are multiple entities of the same class, we cannot determine which one dealt the damage.
-            // In this case, we will register damage event as new entity.
-            AddDamageEvent(damageEvent);
-            RecalculateStatistics();
-        }
-
-        private void AddDamageEvent(PlayerDamage damageEvent)
-        {
-            var session = playerSessions.GetOrAdd(damageEvent.SourceEntity.Id, _ => new PlayerSession(damageEvent, loggerFactory.CreateLogger<PlayerSession>()));
-            session.AddDamage(damageEvent);
-        }
-
         public IReadOnlyCollection<SkillStats> GetPlayerSkillStats(long playerId)
         {
             lock (lockObject)
             {
-                if (activeTargetId != null && playerSessions.TryGetValue(playerId, out var session))
-                    return session.GetSkillStats(activeTargetId.Value);
+                if (targetResolver.ActiveTargetId is { } targetId
+                    && playerSessions.TryGetValue(playerId, out var session))
+                    return session.GetSkillStats(targetId);
                 return Array.Empty<SkillStats>();
-            }
-        }
-
-        private int? DetermineActiveTargetId()
-        {
-            if (combatLastHitTime == null) return null;
-
-            var cutoff = combatLastHitTime.Value - ActiveTargetWindow;
-            targetCountBuffer.Clear();
-
-            foreach (var session in playerSessions.Values)
-            {
-                session.CountRecentTargetHits(cutoff, targetCountBuffer);
-            }
-
-            if (targetCountBuffer.Count == 0) return null;
-
-            int bestTargetId = 0;
-            int bestCount = 0;
-            foreach (var kvp in targetCountBuffer)
-            {
-                if (kvp.Value > bestCount)
-                {
-                    bestCount = kvp.Value;
-                    bestTargetId = kvp.Key;
-                }
-            }
-
-            return bestTargetId;
-        }
-
-        private void RecalculateStatistics()
-        {
-            if (combatStartTime == null) return;
-
-            activeTargetId = DetermineActiveTargetId();
-            if (activeTargetId == null) return;
-
-            int targetId = activeTargetId.Value;
-
-            foreach (var playerSess in playerSessions.Values)
-            {
-                playerSess.UpdateStats(0, targetId);
-            }
-
-            var totalDamage = TotalCombatDamage;
-            foreach (var playerSess in playerSessions.Values)
-            {
-                playerSess.UpdateStats(totalDamage, targetId);
             }
         }
 
@@ -182,24 +74,51 @@ namespace AionDpsMeter.Services.Services.Session
         {
             lock (lockObject)
             {
-                if (combatStartTime == null || combatLastHitTime == null) return TimeSpan.Zero;
-
-                var duration = combatLastHitTime.Value - combatStartTime.Value;
-                return duration > TimeSpan.Zero ? duration : TimeSpan.Zero;
+                return timeline.GetCombatDuration();
             }
         }
 
-        private void ResetInternal()
+        public Mob? GetActiveTargetInfo()
         {
-            foreach (var session in playerSessions.Values)
-                session.Reset();
-            playerSessions.Clear();
-            knownTargetIds.Clear();
-            targetCountBuffer.Clear();
-            activeTargetId = null;
-            combatStartTime = null;
-            combatLastHitTime = null;
+            lock (lockObject)
+            {
+                return targetResolver.GetActiveTargetMob();
+            }
         }
+
+
+        public void ProcessDamageEvent(PlayerDamage damageEvent)
+        {
+            try
+            {
+                lock (lockObject)
+                {
+                    if (timeline.ShouldAutoReset(damageEvent.DateTime, damageEvent.TargetEntity.Id))
+                    {
+                        ResetInternal();
+                        CombatAutoReset?.Invoke(this, EventArgs.Empty);
+                    }
+
+                    timeline.RecordHit(damageEvent.DateTime, damageEvent.TargetEntity.Id);
+
+                    if (damageEvent.Skill.IsEntity)
+                    {
+                        RouteEntityDamage(damageEvent);
+                    }
+                    else
+                    {
+                        AddDamageToSession(damageEvent);
+                    }
+
+                    RecalculateStatistics();
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error processing damage event");
+            }
+        }
+
 
         public void Reset()
         {
@@ -209,33 +128,64 @@ namespace AionDpsMeter.Services.Services.Session
             }
         }
 
-        public ActiveTargetInfo? GetActiveTargetInfo()
+    
+
+        /// <summary>
+        /// Routes damage from entity-type skills (e.g. summons/spirits).
+        /// If exactly one player session matches the entity's class, attribute the damage to them.
+        /// Otherwise treat it as a separate damage source.
+        /// </summary>
+        private void RouteEntityDamage(PlayerDamage damageEvent)
         {
-            lock (lockObject)
+            var entityClassId = damageEvent.Skill.ClassId;
+            var matchingSessions = playerSessions.Values
+                .Where(s => s.ClassId == entityClassId)
+                .ToList();
+
+            if (matchingSessions.Count == 1)
             {
-                if (activeTargetId == null) return null;
-
-                int targetId = activeTargetId.Value;
-
-                // Find the Mob from any player session's damage history
-                foreach (var session in playerSessions.Values)
-                {
-                    var damageHistory = session.GetDamageHistory(targetId);
-                    if (damageHistory.Count > 0)
-                    {
-                        var mob = damageHistory[0].TargetEntity;
-                        return new ActiveTargetInfo
-                        {
-                            TargetId = targetId,
-                            Name = mob.Name,
-                            HpTotal = mob.HpTotal,
-                            HpCurrent = mob.HpCurrent
-                        };
-                    }
-                }
-
-                return null;
+                matchingSessions[0].AddDamage(damageEvent);
             }
+            else
+            {
+                // Multiple or zero matches — register as a separate entity session
+                AddDamageToSession(damageEvent);
+            }
+        }
+
+        private void AddDamageToSession(PlayerDamage damageEvent)
+        {
+            var session = playerSessions.GetOrAdd(
+                damageEvent.SourceEntity.Id,
+                _ => new PlayerSession(damageEvent));
+            session.AddDamage(damageEvent);
+        }
+
+        private void RecalculateStatistics()
+        {
+            if (timeline.LastHitTime is not { } lastHitTime) return;
+
+            targetResolver.Update(playerSessions.Values, lastHitTime);
+
+            if (targetResolver.ActiveTargetId is not { } targetId) return;
+
+            // Pass 1: compute per-player totals (percentage = 0 since total is unknown)
+            foreach (var session in playerSessions.Values)
+                session.UpdateStats(targetId, totalCombatDamage: 0);
+
+            // Pass 2: now compute percentages with the real total
+            long totalDamage = playerSessions.Values.Sum(s => s.Stats.TotalDamage);
+            foreach (var session in playerSessions.Values)
+                session.UpdateStats(targetId, totalDamage);
+        }
+
+        private void ResetInternal()
+        {
+            foreach (var session in playerSessions.Values)
+                session.Reset();
+            playerSessions.Clear();
+            timeline.Reset();
+            targetResolver.Reset();
         }
     }
 }
