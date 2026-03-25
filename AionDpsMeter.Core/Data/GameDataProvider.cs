@@ -86,7 +86,7 @@ namespace AionDpsMeter.Core.Data
                 {
                     Id = skillData.Id,
                     Name = skillData.Name,
-                    Icon = $"/Assets/Skills/{skillData.Id}.png",
+                    Icon = SkillIconResolver.GetIconUrl(skillData.Id),
                     ClassId = skillData.ClassId,
                     GroupId = skillData.GroupId,
                     IsEntity = skillData.IsEntity
@@ -148,13 +148,6 @@ namespace AionDpsMeter.Core.Data
                 return charClass;
             }
             return null;
-
-            //return new CharacterClass
-            //{
-            //    Id = classId,
-            //    Name = $"Unknown Class ({classId})",
-            //    Icon = null
-            //};
         }
 
         public CharacterClass GetClassOrDefault(int classId)
