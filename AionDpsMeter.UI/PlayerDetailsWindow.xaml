@@ -108,15 +108,21 @@
                                  Foreground="{StaticResource BackAttackColorBrush}" FontWeight="Bold"/>
                         </TextBlock>
                         <TextBlock FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0">
+                            <Run Text="Perf: " Foreground="{StaticResource SecondaryTextBrush}"/>
+                            <Run Text="{Binding PerfectRateDisplay, Mode=OneWay}"
+                                 Foreground="{StaticResource PerfectColorBrush}" FontWeight="Bold"/>    
+                        </TextBlock>
+                        <TextBlock FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0">
                             <Run Text="x2: " Foreground="{StaticResource SecondaryTextBrush}"/>
                             <Run Text="{Binding DoubleDamageRateDisplay, Mode=OneWay}"
                                  Foreground="{StaticResource DoubleDamageColorBrush}" FontWeight="Bold"/>
                         </TextBlock>
                         <TextBlock FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0">
-                            <Run Text="Perf: " Foreground="{StaticResource SecondaryTextBrush}"/>
-                            <Run Text="{Binding PerfectRateDisplay, Mode=OneWay}"
-                                 Foreground="{StaticResource PerfectColorBrush}" FontWeight="Bold"/>
+                         <Run Text="Parry: " Foreground="{StaticResource SecondaryTextBrush}"/>
+                         <Run Text="{Binding ParryRateDisplay, Mode=OneWay}"
+                              Foreground="{StaticResource ParryColorBrush}" FontWeight="Bold"/>          
                         </TextBlock>
+
                         <TextBlock FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0">
                             <Run Text="Hits: " Foreground="{StaticResource SecondaryTextBrush}"/>
                             <Run Text="{Binding TotalHits, Mode=OneWay}"
@@ -202,7 +208,7 @@
                             <TextBlock Grid.Column="4"  Text="Back%"  Style="{StaticResource ColHeader}" HorizontalAlignment="Center" Foreground="{StaticResource BackAttackColorBrush}"/>
                             <TextBlock Grid.Column="5"  Text="Perf%"  Style="{StaticResource ColHeader}" HorizontalAlignment="Center" Foreground="{StaticResource PerfectColorBrush}"/>
                             <TextBlock Grid.Column="6"  Text="x2%"    Style="{StaticResource ColHeader}" HorizontalAlignment="Center" Foreground="{StaticResource DoubleDamageColorBrush}"/>
-                            <TextBlock Grid.Column="7"  Text="Parry%" Style="{StaticResource ColHeader}" HorizontalAlignment="Center"/>
+                            <TextBlock Grid.Column="7"  Text="Parry%" Style="{StaticResource ColHeader}" HorizontalAlignment="Center" Foreground="{StaticResource ParryColorBrush}"/>
                             <TextBlock Grid.Column="8"  Text="Avg"    Style="{StaticResource ColHeader}" HorizontalAlignment="Center"/>
                             <TextBlock Grid.Column="9"  Text="Min"    Style="{StaticResource ColHeader}" HorizontalAlignment="Center"/>
                             <TextBlock Grid.Column="10" Text="Max"    Style="{StaticResource ColHeader}" HorizontalAlignment="Center"/>
