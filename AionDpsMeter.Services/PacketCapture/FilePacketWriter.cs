@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+using AionDpsMeter.Services.Services.Settings;
 
 namespace AionDpsMeter.Services.PacketCapture
 {
@@ -11,35 +12,23 @@ namespace AionDpsMeter.Services.PacketCapture
         private StreamWriter? packetLogWriter;
         private string? currentLogFilePath;
         private readonly Lock logLock = new();
-        public void StartPacketLogging()
-        {
+        private readonly IAppSettingsService _settingsService;
 
-            lock (logLock)
-            {
-                try
-                {
-                    Directory.CreateDirectory(PacketLogDirectory);
-                    currentLogFilePath =
-                        Path.Combine(PacketLogDirectory, $"packets_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
-                    packetLogWriter = new StreamWriter(currentLogFilePath, append: false, Encoding.UTF8)
-                    {
-                        AutoFlush = true
-                    };
-                    packetLogWriter.WriteLine($"# Packet capture started at {DateTime.Now:O}");
-                    packetLogWriter.WriteLine($"# Format: TIMESTAMP|STREAMKEY|HEX_DATA");
-                    packetLogWriter.WriteLine();
-                    Debug.WriteLine($"[PACKET_LOG] Started logging to: {currentLogFilePath}");
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[PACKET_LOG] Failed to start logging: {ex.Message}");
-                }
-            }
+        public FilePacketWriter(IAppSettingsService settingsService)
+        {
+            _settingsService = settingsService;
+            _settingsService.SettingsChanged += OnSettingsChanged;
         }
 
+        private void OnSettingsChanged(object? sender, EventArgs e)
+        {
+            if (!_settingsService.IsPacketLoggingEnabled)
+                FinalizePacketLogging();
+        }
+
+      
         public void FinalizePacketLogging()
         {
-
             lock (logLock)
             {
                 if (packetLogWriter is not null)
@@ -69,6 +58,8 @@ namespace AionDpsMeter.Services.PacketCapture
         {
             lock (logLock)
             {
+                if (!_settingsService.IsPacketLoggingEnabled) return;
+
                 if (packetLogWriter is null) StartPacketLogging();
 
                 if (packetLogWriter is null) return;
@@ -84,5 +75,32 @@ namespace AionDpsMeter.Services.PacketCapture
                 }
             }
         }
+
+        private void StartPacketLogging()
+        {
+            lock (logLock)
+            {
+
+                try
+                {
+                    Directory.CreateDirectory(PacketLogDirectory);
+                    currentLogFilePath =
+                        Path.Combine(PacketLogDirectory, $"packets_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
+                    packetLogWriter = new StreamWriter(currentLogFilePath, append: false, Encoding.UTF8)
+                    {
+                        AutoFlush = true
+                    };
+                    packetLogWriter.WriteLine($"# Packet capture started at {DateTime.Now:O}");
+                    packetLogWriter.WriteLine($"# Format: TIMESTAMP|STREAMKEY|HEX_DATA");
+                    packetLogWriter.WriteLine();
+                    Debug.WriteLine($"[PACKET_LOG] Started logging to: {currentLogFilePath}");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[PACKET_LOG] Failed to start logging: {ex.Message}");
+                }
+            }
+        }
     }
 }
+

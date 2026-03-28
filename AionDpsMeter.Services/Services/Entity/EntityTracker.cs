@@ -100,26 +100,26 @@ namespace AionDpsMeter.Services.Services.Entity
             }
         }
 
-        //public void RegisterSummon(int summonId, int mobCode)
-        //{
-        //    summons[summonId] = mobCode;
+        public void RegisterSummon(int summonId, int ownerId)
+        {
+            summons[summonId] = ownerId;
 
-        //    if (!entities.ContainsKey(summonId))
-        //    {
-        //        entities[summonId] = new Entity
-        //        {
-        //            Id = summonId,
-        //            Name = $"Summon_{summonId}",
-        //            Icon = null
-        //        };
-        //    }
-        //}
+            //if (!entities.ContainsKey(summonId))
+            //{
+            //    entities[summonId] = new Entity
+            //    {
+            //        Id = summonId,
+            //        Name = $"Summon_{summonId}",
+            //        Icon = null
+            //    };
+            //}
+        }
 
         public bool IsSummon(int entityId) => summons.ContainsKey(entityId);
 
-        public int? GetSummonMobCode(int summonId)
+        public int? GetSummonOwner(int summonId)
         {
-            return summons.TryGetValue(summonId, out var mobCode) ? mobCode : null;
+            return summons.TryGetValue(summonId, out var ownerId) ? ownerId : null;
         }
 
         public Core.Models.Entity? GetPlayerEntity(int entityId)

@@ -42,6 +42,11 @@ namespace AionDpsMeter.Services.Extensions
                 return bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24);
             }
 
+            public int ReadUInt24Le(int offset)
+            {
+                if (offset + 3 > bytes.Length) return 0;
+                return bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16);
+            }
 
             public (int Value, int Length) ReadVarInt(int offset = 0)
             {
@@ -70,12 +75,11 @@ namespace AionDpsMeter.Services.Extensions
                 return (-1, -1);
             }
 
-            public int IndexOfArray( byte[] bytesToFind, int offset = 0)
+            public int IndexOfArray(byte[] bytesToFind, int offset = 0)
             {
                 if (bytesToFind.Length == 0 || bytes.Length < bytesToFind.Length || offset >= bytes.Length)
-                {
-                    return -1; 
-                }
+                    return -1;
+
                 for (int i = offset; i <= bytes.Length - bytesToFind.Length; i++)
                 {
                     bool found = true;
@@ -88,11 +92,9 @@ namespace AionDpsMeter.Services.Extensions
                         }
                     }
                     if (found)
-                    {
-                        return i; 
-                    }
+                        return i;
                 }
-                return -1; 
+                return -1;
             }
         }
     }

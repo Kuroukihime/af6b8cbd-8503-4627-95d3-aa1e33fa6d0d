@@ -18,11 +18,14 @@ namespace AionDpsMeter.Services.Services.Session
         private readonly ActiveTargetResolver targetResolver;
         private readonly object lockObject = new();
         private readonly ILogger<CombatSessionManager> logger;
+        private readonly EntityTracker entityTracker;
 
         public event EventHandler? CombatAutoReset;
 
+
         public CombatSessionManager(EntityTracker entityTracker, ILoggerFactory loggerFactory)
         {
+            this.entityTracker = entityTracker;
             targetResolver = new ActiveTargetResolver(entityTracker);
             logger = loggerFactory.CreateLogger<CombatSessionManager>();
         }
@@ -101,14 +104,12 @@ namespace AionDpsMeter.Services.Services.Session
 
                     timeline.RecordHit(damageEvent.DateTime, damageEvent.TargetEntity.Id);
 
-                    if (damageEvent.Skill.IsEntity)
+                    if (entityTracker.IsSummon(damageEvent.SourceEntity.Id))
                     {
-                        RouteEntityDamage(damageEvent);
+                        if (!ResolveSummonDamageEvent(damageEvent)) return;
                     }
-                    else
-                    {
-                        AddDamageToSession(damageEvent);
-                    }
+
+                    AddDamageToSession(damageEvent);
 
                     RecalculateStatistics();
                 }
@@ -119,37 +120,32 @@ namespace AionDpsMeter.Services.Services.Session
             }
         }
 
+        private bool ResolveSummonDamageEvent(PlayerDamage damageEvent)
+        {
+            var ownerId = entityTracker.GetSummonOwner(damageEvent.SourceEntity.Id);
+            if (ownerId == null)
+            {
+                // This shouldn't happen since IsSummon returned true, but log just in case
+                logger.LogError("Summon owner not found for summon entity {SummonId}", damageEvent.SourceEntity.Id);
+                return false;
+            }
+
+            damageEvent.SourceEntity = new Player()
+            {
+                CharacterClass = damageEvent.SourceEntity.CharacterClass,
+                Icon = damageEvent.SourceEntity.Icon,
+                Name = damageEvent.SourceEntity.Name,
+                Id = ownerId.Value,
+            };
+            return true;
+        }
+
 
         public void Reset()
         {
             lock (lockObject)
             {
                 ResetInternal();
-            }
-        }
-
-    
-
-        /// <summary>
-        /// Routes damage from entity-type skills (e.g. summons/spirits).
-        /// If exactly one player session matches the entity's class, attribute the damage to them.
-        /// Otherwise treat it as a separate damage source.
-        /// </summary>
-        private void RouteEntityDamage(PlayerDamage damageEvent)
-        {
-            var entityClassId = damageEvent.Skill.ClassId;
-            var matchingSessions = playerSessions.Values
-                .Where(s => s.ClassId == entityClassId)
-                .ToList();
-
-            if (matchingSessions.Count == 1)
-            {
-                matchingSessions[0].AddDamage(damageEvent);
-            }
-            else
-            {
-                // Multiple or zero matches — register as a separate entity session
-                AddDamageToSession(damageEvent);
             }
         }
 

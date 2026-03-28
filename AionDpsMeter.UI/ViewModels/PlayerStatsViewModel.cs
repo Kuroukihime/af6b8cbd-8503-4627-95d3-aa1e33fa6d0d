@@ -6,9 +6,14 @@ namespace AionDpsMeter.UI.ViewModels
     {
         private readonly PlayerStats stats;
 
+        // Smoothly-animated percentage for the progress bar
+        private double _animatedPercentage;
+        public double AnimatedPercentage => _animatedPercentage;
+
         public PlayerStatsViewModel(PlayerStats stats)
         {
             this.stats = stats;
+            _animatedPercentage = stats.DamagePercentage;
         }
 
         public long PlayerId => stats.PlayerId;
@@ -38,12 +43,21 @@ namespace AionDpsMeter.UI.ViewModels
                 }
             }
 
+            // Smooth ease-towards animation for the progress bar
+            double target = stats.DamagePercentage;
+            double diff = target - _animatedPercentage;
+            if (Math.Abs(diff) < 0.05)
+                _animatedPercentage = target;
+            else
+                _animatedPercentage += diff * 0.25;
+
             // Notify all properties changed
             OnPropertyChanged(nameof(TotalDamage));
             OnPropertyChanged(nameof(TotalDamageFormatted));
             OnPropertyChanged(nameof(DamagePerSecond));
             OnPropertyChanged(nameof(DpsFormatted));
             OnPropertyChanged(nameof(DamagePercentage));
+            OnPropertyChanged(nameof(AnimatedPercentage));
             OnPropertyChanged(nameof(HitCount));
             OnPropertyChanged(nameof(CriticalRate));
             OnPropertyChanged(nameof(BackAttackRate));

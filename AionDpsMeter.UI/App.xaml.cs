@@ -5,6 +5,7 @@ using AionDpsMeter.Services.PacketCapture;
 using AionDpsMeter.Services.Services;
 using AionDpsMeter.Services.Services.Entity;
 using AionDpsMeter.Services.Services.Session;
+using AionDpsMeter.Services.Services.Settings;
 using AionDpsMeter.UI.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -36,15 +37,16 @@ namespace AionDpsMeter.UI
                 .ConfigureServices((context, services) =>
                 {
                    
+                    services.AddSingleton<IAppSettingsService, AppSettingsService>();
+                    services.AddSingleton<FilePacketWriter>();
                     services.AddSingleton<TcpStreamBuffer>();
-
-                    //services.AddSingleton<FilePacketWriter>();
 
                     //services.AddSingleton<IPacketCaptureDevice, FilePacketCaptureDevice>();
                     services.AddSingleton<IPacketCaptureDevice, LoopbackCaptureDevice>();
                     services.AddSingleton<EntityTracker>();
                     services.AddSingleton<IPacketService, AionPacketService>();
                     services.AddSingleton<CombatSessionManager>();
+                    services.AddSingleton<SettingsViewModel>();
                     services.AddSingleton<MainViewModel>();
                     services.AddSingleton<MainWindow>();
 

@@ -41,6 +41,7 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
                     <!-- Combat Duration -->
@@ -86,7 +87,6 @@
                         <!-- Boss name and HP text -->
                         <Grid Grid.Row="0">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
@@ -137,8 +137,21 @@
                             Background="{StaticResource TertiaryBackgroundBrush}"
                             Padding="0"/>
 
-                    <!-- Minimize Button -->
+                    <!-- Settings Button -->
                     <Button Grid.Column="4"
+                            Content="⚙"
+                            Width="22"
+                            Height="22"
+                            FontSize="12"
+                            Margin="2,0"
+                            ToolTip="Settings"
+                            Click="SettingsButton_Click"
+                            Style="{StaticResource ModernButtonStyle}"
+                            Background="{StaticResource TertiaryBackgroundBrush}"
+                            Padding="0"/>
+
+                    <!-- Minimize Button -->
+                    <Button Grid.Column="5"
                             Content="━"
                             Width="22"
                             Height="22"
@@ -150,7 +163,7 @@
                             Padding="0"/>
 
                     <!-- Close Button -->
-                    <Button Grid.Column="5"
+                    <Button Grid.Column="6"
                             Content="✕"
                             Width="22"
                             Height="22"
@@ -223,13 +236,13 @@
                                     <Border Background="{StaticResource TertiaryBackgroundBrush}"
                                             CornerRadius="2"
                                             Height="20"/>
-                                    <Border Background="{StaticResource DamageBarBrush}"
+                                    <Border Background="{StaticResource ProgressBarGradientBrush}"
                                             CornerRadius="2"
                                             Height="20"
                                             HorizontalAlignment="Left">
                                         <Border.Width>
                                             <MultiBinding Converter="{StaticResource PercentageToWidthConverter}">
-                                                <Binding Path="DamagePercentage"/>
+                                                <Binding Path="AnimatedPercentage"/>
                                                 <Binding Path="ActualWidth" RelativeSource="{RelativeSource AncestorType=Grid}"/>
                                             </MultiBinding>
                                         </Border.Width>
@@ -264,7 +277,7 @@
                                         VerticalAlignment="Center">
                                     <TextBlock FontSize="10"
                                                FontWeight="Bold"
-                                               Foreground="#7FFF00"
+                                               Foreground="{StaticResource DpsColorBrush}"
                                                VerticalAlignment="Center">
                                         <Run Text="{Binding DpsFormatted, Mode=OneWay}"/>
                                         <Run Text="/s" FontSize="8" Foreground="{StaticResource SecondaryTextBrush}"/>

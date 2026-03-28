@@ -31,6 +31,8 @@ namespace AionDpsMeter.UI.ViewModels
         public string AverageDamageFormatted => FormatDamage((long)stats.AverageDamage);
         public long MaxHit => stats.MaxHit;
         public long MinHit => stats.MinHit == long.MaxValue ? 0 : stats.MinHit;
+        public string MaxHitFormatted => $"{MaxHit:N0}";
+        public string MinHitFormatted => $"{MinHit:N0}";
         public double DamagePercentage => stats.DamagePercentage;
         public string DamagePercentageFormatted => $"{stats.DamagePercentage:F1}%";
         public double DamagePerSecond => stats.DamagePerSecond;

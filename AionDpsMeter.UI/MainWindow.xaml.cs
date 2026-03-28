@@ -6,10 +6,14 @@ namespace AionDpsMeter.UI
 {
     public partial class MainWindow : Window
     {
-        public MainWindow(MainViewModel viewModel)
+        private readonly SettingsViewModel _settingsViewModel;
+        private SettingsWindow? _settingsWindow;
+
+        public MainWindow(MainViewModel viewModel, SettingsViewModel settingsViewModel)
         {
             InitializeComponent();
             DataContext = viewModel;
+            _settingsViewModel = settingsViewModel;
         }
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -24,6 +28,22 @@ namespace AionDpsMeter.UI
         private void MinimizeButton_Click(object sender, RoutedEventArgs e)
         {
             WindowState = WindowState.Minimized;
+        }
+
+        private void SettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_settingsWindow is { IsVisible: true })
+            {
+                _settingsWindow.Activate();
+                return;
+            }
+
+            _settingsWindow = new SettingsWindow
+            {
+                DataContext = _settingsViewModel,
+                Owner = this
+            };
+            _settingsWindow.Show();
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)

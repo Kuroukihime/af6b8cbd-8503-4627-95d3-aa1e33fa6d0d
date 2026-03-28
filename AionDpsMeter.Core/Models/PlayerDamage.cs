@@ -3,7 +3,7 @@
     public sealed class PlayerDamage
     {
         public DateTime DateTime { get; init; }
-        public Player SourceEntity { get; init; } = null!;
+        public Player SourceEntity { get; set; } = null!;
         public Mob TargetEntity { get; init; } = null!;
         public Skill Skill { get; init; } = null!;
         public CharacterClass CharacterClass { get; init; } = null!;

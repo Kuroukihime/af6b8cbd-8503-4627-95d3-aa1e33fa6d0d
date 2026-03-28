@@ -160,6 +160,16 @@ namespace AionDpsMeter.UI.ViewModels
             }
         }
 
+        [ObservableProperty]
+        private bool _showCombatLog;
+
+        public bool ShowSkills => !ShowCombatLog;
+
+        partial void OnShowCombatLogChanged(bool value) => OnPropertyChanged(nameof(ShowSkills));
+
+        [RelayCommand]
+        private void ToggleCombatLog() => ShowCombatLog = !ShowCombatLog;
+
         private void RefreshSkills()
         {
             var skillStats = _sessionManager.GetPlayerSkillStats(_playerId);

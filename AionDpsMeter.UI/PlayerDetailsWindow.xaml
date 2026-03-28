@@ -4,9 +4,9 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="Player Details" 
-        Height="600" 
-        Width="700"
+        Title="Player Details"
+        Height="560"
+        Width="920"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
@@ -15,9 +15,9 @@
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
 
     <Window.Resources>
-        <!-- Optimized ScrollBar Style -->
+        <!-- Slim scrollbar -->
         <Style x:Key="SlimScrollBarStyle" TargetType="ScrollBar">
-            <Setter Property="Width" Value="8"/>
+            <Setter Property="Width" Value="6"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -25,13 +25,10 @@
                         <Grid>
                             <Track x:Name="PART_Track" IsDirectionReversed="True">
                                 <Track.Thumb>
-                                    <Thumb Background="{StaticResource TertiaryBackgroundBrush}" 
-                                           BorderThickness="0">
+                                    <Thumb>
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
-                                                <Border Background="{StaticResource AccentBrush}" 
-                                                        CornerRadius="4" 
-                                                        Opacity="0.6"/>
+                                                <Border Background="#30363D" CornerRadius="3"/>
                                             </ControlTemplate>
                                         </Thumb.Template>
                                     </Thumb>
@@ -43,8 +40,16 @@
             </Setter>
         </Style>
 
-        <!-- Virtualized ListBox Style -->
-        <Style x:Key="VirtualizedListStyle" TargetType="ListBox">
+        <!-- Column header text style -->
+        <Style x:Key="ColHeader" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- Virtualized table list with alternating rows -->
+        <Style x:Key="TableListBox" TargetType="ListBox">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True"/>
@@ -53,540 +58,381 @@
             <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
             <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
             <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
-            <Setter Property="ItemContainerStyle">
-                <Setter.Value>
-                    <Style TargetType="ListBoxItem">
-                        <Setter Property="Padding" Value="0"/>
-                        <Setter Property="Margin" Value="0"/>
-                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                        <Setter Property="Background" Value="Transparent"/>
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="ListBoxItem">
-                                    <ContentPresenter/>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-                </Setter.Value>
-            </Setter>
+            <Setter Property="AlternationCount" Value="2"/>
         </Style>
     </Window.Resources>
 
-    <Border Background="{StaticResource PrimaryBackgroundBrush}" 
-            BorderBrush="{StaticResource AccentBrush}" 
-            BorderThickness="2" 
-            CornerRadius="8"
-            Opacity="0.95">
+    <Border Background="{StaticResource PrimaryBackgroundBrush}"
+            BorderBrush="#30363D"
+            BorderThickness="1"
+            CornerRadius="6">
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <!-- Header -->
-            <Border Grid.Row="0" 
-                    Background="{StaticResource SecondaryBackgroundBrush}" 
-                    CornerRadius="6,6,0,0"
-                    Padding="12,8">
+            <!-- HEADER BAR -->
+            <Border Grid.Row="0"
+                    Background="{StaticResource SecondaryBackgroundBrush}"
+                    CornerRadius="5,5,0,0"
+                    Padding="10,6"
+                    BorderBrush="#21262D"
+                    BorderThickness="0,0,0,1">
                 <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-
-                    <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <TextBlock Text="📊" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0"/>
-
-                        <!-- Class Icon -->
-                        <Border Width="32" 
-                                Height="32" 
-                                CornerRadius="4"
-                                Margin="0,0,10,0"
+                    <!-- Left: class icon + name + inline stats -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left">
+                        <Border Width="26" Height="26" CornerRadius="3" Margin="0,0,8,0"
                                 Background="{StaticResource TertiaryBackgroundBrush}"
                                 Visibility="{Binding HasClassIcon, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <Image Source="{Binding ClassIconDisplay, Converter={StaticResource SafeImageSourceConverter}}" 
-                                   Stretch="Uniform"
-                                   RenderOptions.BitmapScalingMode="LowQuality"/>
+                            <Image Source="{Binding ClassIconDisplay, Converter={StaticResource SafeImageSourceConverter}}"
+                                   Stretch="Uniform" RenderOptions.BitmapScalingMode="LowQuality"/>
                         </Border>
+                        <TextBlock Text="{Binding PlayerNameDisplay}"
+                                   FontSize="13" FontWeight="Bold"
+                                   Foreground="{StaticResource PrimaryTextBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,14,0"/>
+                        <TextBlock FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0">
+                            <Run Text="Total: " Foreground="{StaticResource SecondaryTextBrush}"/>
+                            <Run Text="{Binding TotalDamageDisplay, Mode=OneWay}"
+                                 Foreground="{StaticResource PrimaryTextBrush}" FontWeight="SemiBold"/>
+                        </TextBlock>
+                        <TextBlock FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0">
+                            <Run Text="Crit: " Foreground="{StaticResource SecondaryTextBrush}"/>
+                            <Run Text="{Binding CriticalRateDisplay, Mode=OneWay}"
+                                 Foreground="{StaticResource CriticalColorBrush}" FontWeight="Bold"/>
+                        </TextBlock>
+                        <TextBlock FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0">
+                            <Run Text="Back: " Foreground="{StaticResource SecondaryTextBrush}"/>
+                            <Run Text="{Binding BackAttackRateDisplay, Mode=OneWay}"
+                                 Foreground="{StaticResource BackAttackColorBrush}" FontWeight="Bold"/>
+                        </TextBlock>
+                        <TextBlock FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0">
+                            <Run Text="Perf: " Foreground="{StaticResource SecondaryTextBrush}"/>
+                            <Run Text="{Binding PerfectRateDisplay, Mode=OneWay}"
+                                 Foreground="{StaticResource PerfectColorBrush}" FontWeight="Bold"/>    
+                        </TextBlock>
+                        <TextBlock FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0">
+                            <Run Text="x2: " Foreground="{StaticResource SecondaryTextBrush}"/>
+                            <Run Text="{Binding DoubleDamageRateDisplay, Mode=OneWay}"
+                                 Foreground="{StaticResource DoubleDamageColorBrush}" FontWeight="Bold"/>
+                        </TextBlock>
+                        <TextBlock FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0">
+                         <Run Text="Parry: " Foreground="{StaticResource SecondaryTextBrush}"/>
+                         <Run Text="{Binding ParryRateDisplay, Mode=OneWay}"
+                              Foreground="{StaticResource ParryColorBrush}" FontWeight="Bold"/>          
+                        </TextBlock>
 
-                        <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="{Binding PlayerNameDisplay}" 
-                                       FontSize="18" 
-                                       FontWeight="Bold"
-                                       Foreground="{StaticResource PrimaryTextBrush}"/>
-                            <TextBlock Text="{Binding ClassNameDisplay}" 
-                                       FontSize="11"
-                                       Foreground="{StaticResource SecondaryTextBrush}"
-                                       Margin="0,-2,0,0"/>
-                        </StackPanel>
+                        <TextBlock FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0">
+                            <Run Text="Hits: " Foreground="{StaticResource SecondaryTextBrush}"/>
+                            <Run Text="{Binding TotalHits, Mode=OneWay}"
+                                 Foreground="{StaticResource PrimaryTextBrush}" FontWeight="SemiBold"/>
+                        </TextBlock>
+                        <TextBlock FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0">
+                            <Run Text="DPS: " Foreground="{StaticResource SecondaryTextBrush}"/>
+                            <Run Text="{Binding DpsDisplay, Mode=OneWay}"
+                                 Foreground="{StaticResource DpsColorBrush}" FontWeight="Bold"/>
+                        </TextBlock>
+                        <TextBlock FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0">
+                            <Run Text="Time: " Foreground="{StaticResource SecondaryTextBrush}"/>
+                            <Run Text="{Binding CombatDurationDisplay, Mode=OneWay}"
+                                 Foreground="{StaticResource PrimaryTextBrush}" FontWeight="SemiBold"/>
+                        </TextBlock>
+                        <TextBlock FontSize="11" VerticalAlignment="Center">
+                            <Run Text="Share: " Foreground="{StaticResource SecondaryTextBrush}"/>
+                            <Run Text="{Binding DamageContributionDisplay, Mode=OneWay}"
+                                 Foreground="{StaticResource AccentBrush}" FontWeight="Bold"/>
+                        </TextBlock>
                     </StackPanel>
-
-                    <Button Grid.Column="1" 
-                            Content="✕"
-                            Width="30" 
-                            Height="30"
-                            FontSize="16"
-                            Click="CloseButton_Click"
-                            Style="{StaticResource ModernButtonStyle}"
-                            Background="#C42B1C"/>
+                    <!-- Right: Log toggle + Close -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Button Width="40" Height="22" FontSize="10"
+                                Command="{Binding ToggleCombatLogCommand}"
+                                Style="{StaticResource ModernButtonStyle}"
+                                Background="{StaticResource TertiaryBackgroundBrush}"
+                                Margin="0,0,6,0">
+                            <TextBlock FontSize="10">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="Log"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ShowCombatLog}" Value="True">
+                                                <Setter Property="Text" Value="Skills"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Button>
+                        <Button Content="?" Width="22" Height="22" FontSize="10"
+                                Click="CloseButton_Click"
+                                Style="{StaticResource ModernButtonStyle}"
+                                Background="#C42B1C"/>
+                    </StackPanel>
                 </Grid>
             </Border>
 
-            <!-- Player Summary Stats -->
-            <Border Grid.Row="1" 
-                    Background="{StaticResource TertiaryBackgroundBrush}"
-                    Padding="12,10">
-                <Grid>
+            <!-- CONTENT (Skills / Log) -->
+            <Grid Grid.Row="1">
+                <!-- SKILLS VIEW -->
+                <Grid Visibility="{Binding ShowSkills, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Row 0: Active Target Info -->
-                    <Border Grid.Row="0" 
-                            Background="{StaticResource SecondaryBackgroundBrush}"
-                            CornerRadius="4"
-                            Padding="8,4"
-                            Margin="0,0,0,6"
-                            Visibility="{Binding HasActiveTarget, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <!-- Column headers -->
+                    <Border Grid.Row="0"
+                            Background="{StaticResource TertiaryBackgroundBrush}"
+                            BorderBrush="#21262D" BorderThickness="0,0,0,1"
+                            Padding="10,6">
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="28"/>
+                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="40"/>
+                                <ColumnDefinition Width="55"/>
+                                <ColumnDefinition Width="55"/>
+                                <ColumnDefinition Width="55"/>
+                                <ColumnDefinition Width="50"/>
+                                <ColumnDefinition Width="50"/>
+                                <ColumnDefinition Width="70"/>
+                                <ColumnDefinition Width="65"/>
+                                <ColumnDefinition Width="65"/>
+                                <ColumnDefinition Width="1.3*"/>
                             </Grid.ColumnDefinitions>
-
-                            <TextBlock Grid.Column="0"
-                                       Text="🎯" 
-                                       FontSize="12" 
-                                       VerticalAlignment="Center" 
-                                       Margin="0,0,6,0"/>
-                            <TextBlock Grid.Column="1"
-                                       Text="{Binding ActiveTargetName}"
-                                       FontSize="12"
-                                       FontWeight="SemiBold"
-                                       Foreground="{StaticResource PrimaryTextBrush}"
-                                       VerticalAlignment="Center"/>
-
-                            <TextBlock Grid.Column="3"
-                                       Text="{Binding ActiveTargetHpTotalDisplay}"
-                                       FontSize="11"
-                                       FontFamily="Consolas"
-                                       Foreground="#C84040"
-                                       FontWeight="Bold"
-                                       VerticalAlignment="Center"
-                                       Margin="8,0,8,0"/>
-
-                            <TextBlock Grid.Column="4"
-                                       FontSize="11"
-                                       Foreground="{StaticResource DamageBarBrush}"
-                                       FontWeight="Bold"
-                                       VerticalAlignment="Center">
-                                <Run Text="Total DMG: "/><Run Text="{Binding TotalDamageDisplay, Mode=OneWay}"/>
-                            </TextBlock>
+                            <TextBlock Grid.Column="0"  Style="{StaticResource ColHeader}"/>
+                            <TextBlock Grid.Column="1"  Text="Skill"  Style="{StaticResource ColHeader}" Margin="4,0,0,0"/>
+                            <TextBlock Grid.Column="2"  Text="Hits"   Style="{StaticResource ColHeader}" HorizontalAlignment="Center"/>
+                            <TextBlock Grid.Column="3"  Text="Crit%"  Style="{StaticResource ColHeader}" HorizontalAlignment="Center" Foreground="{StaticResource CriticalColorBrush}"/>
+                            <TextBlock Grid.Column="4"  Text="Back%"  Style="{StaticResource ColHeader}" HorizontalAlignment="Center" Foreground="{StaticResource BackAttackColorBrush}"/>
+                            <TextBlock Grid.Column="5"  Text="Perf%"  Style="{StaticResource ColHeader}" HorizontalAlignment="Center" Foreground="{StaticResource PerfectColorBrush}"/>
+                            <TextBlock Grid.Column="6"  Text="x2%"    Style="{StaticResource ColHeader}" HorizontalAlignment="Center" Foreground="{StaticResource DoubleDamageColorBrush}"/>
+                            <TextBlock Grid.Column="7"  Text="Parry%" Style="{StaticResource ColHeader}" HorizontalAlignment="Center" Foreground="{StaticResource ParryColorBrush}"/>
+                            <TextBlock Grid.Column="8"  Text="Avg"    Style="{StaticResource ColHeader}" HorizontalAlignment="Center"/>
+                            <TextBlock Grid.Column="9"  Text="Min"    Style="{StaticResource ColHeader}" HorizontalAlignment="Center"/>
+                            <TextBlock Grid.Column="10" Text="Max"    Style="{StaticResource ColHeader}" HorizontalAlignment="Center"/>
+                            <TextBlock Grid.Column="11" Text="Damage" Style="{StaticResource ColHeader}" HorizontalAlignment="Right" Margin="0,0,6,0"/>
                         </Grid>
                     </Border>
 
-                    <!-- Row 1: Main stats -->
-                    <Grid Grid.Row="1">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left" Margin="8,4">
-                            <TextBlock Text="Total Damage" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" Width="80"/>
-                            <TextBlock Text="{Binding TotalDamageDisplay}" FontSize="13" FontWeight="Bold" Foreground="{StaticResource PrimaryTextBrush}" VerticalAlignment="Center"/>
-                        </StackPanel>
-
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left" Margin="8,4">
-                            <TextBlock Text="Contribution" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" Width="80"/>
-                            <TextBlock Text="{Binding DamageContributionDisplay}" FontSize="13" FontWeight="Bold" Foreground="{StaticResource PrimaryTextBrush}" VerticalAlignment="Center"/>
-                        </StackPanel>
-
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Left" Margin="8,4">
-                            <TextBlock Text="Crit Rate" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" Width="80"/>
-                            <TextBlock Text="{Binding CriticalRateDisplay}" FontSize="13" FontWeight="Bold" Foreground="{StaticResource CriticalColorBrush}" VerticalAlignment="Center"/>
-                        </StackPanel>
-
-                        <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Left" Margin="8,4">
-                            <TextBlock Text="Perfect Rate" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" Width="80"/>
-                            <TextBlock Text="{Binding PerfectRateDisplay}" FontSize="13" FontWeight="Bold" Foreground="{StaticResource PrimaryTextBrush}" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Grid>
-
-                    <!-- Row 2: Additional stats -->
-                    <Grid Grid.Row="2" Margin="0,4,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left" Margin="8,4">
-                            <TextBlock Text="x2 Rate" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" Width="80"/>
-                            <TextBlock Text="{Binding DoubleDamageRateDisplay}" FontSize="13" FontWeight="Bold" Foreground="#66FF66" VerticalAlignment="Center"/>
-                        </StackPanel>
-
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left" Margin="8,4">
-                            <TextBlock Text="Back Attack" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" Width="80"/>
-                            <TextBlock Text="{Binding BackAttackRateDisplay}" FontSize="13" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
-                        </StackPanel>
-
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Left" Margin="8,4">
-                            <TextBlock Text="Parry Rate" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" Width="80"/>
-                            <TextBlock Text="{Binding ParryRateDisplay}" FontSize="13" FontWeight="Bold" Foreground="#FF6666" VerticalAlignment="Center"/>
-                        </StackPanel>
-
-                        <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Left" Margin="8,4">
-                            <TextBlock Text="Duration" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" Width="80"/>
-                            <TextBlock Text="{Binding CombatDurationDisplay}" FontSize="13" FontWeight="Bold" Foreground="{StaticResource PrimaryTextBrush}" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Grid>
-                </Grid>
-            </Border>
-
-            <!-- Tab Control -->
-            <TabControl Grid.Row="2"
-                        SelectedIndex="{Binding SelectedTabIndex}"
-                        Background="Transparent"
-                        BorderThickness="0"
-                        Margin="8">
-                <TabControl.Resources>
-                    <Style TargetType="TabItem">
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="TabItem">
-                                    <Border x:Name="Border" 
-                                            Background="{StaticResource TertiaryBackgroundBrush}" 
-                                            CornerRadius="4,4,0,0"
-                                            Padding="16,8"
-                                            Margin="2,0">
-                                        <ContentPresenter x:Name="ContentSite"
-                                                          ContentSource="Header"
-                                                          HorizontalAlignment="Center"
-                                                          VerticalAlignment="Center"/>
+                    <!-- Skills list -->
+                    <ListBox Grid.Row="1" ItemsSource="{Binding Skills}" Style="{StaticResource TableListBox}">
+                        <ListBox.Resources>
+                            <Style TargetType="ScrollBar" BasedOn="{StaticResource SlimScrollBarStyle}"/>
+                        </ListBox.Resources>
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="0"/>
+                                <Setter Property="Margin" Value="0"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="Background" Value="{StaticResource PrimaryBackgroundBrush}"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <Border Background="{TemplateBinding Background}">
+                                                <ContentPresenter/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                                        <Setter Property="Background" Value="#131820"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Border HorizontalAlignment="Left" VerticalAlignment="Stretch"
+                                            Background="#253DC9B0" CornerRadius="2">
+                                        <Border.Width>
+                                            <MultiBinding Converter="{StaticResource PercentageToWidthConverter}">
+                                                <Binding Path="DamagePercentage"/>
+                                                <Binding Path="ActualWidth" RelativeSource="{RelativeSource AncestorType=Grid}"/>
+                                            </MultiBinding>
+                                        </Border.Width>
                                     </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsSelected" Value="True">
-                                            <Setter TargetName="Border" Property="Background" Value="{StaticResource AccentBrush}"/>
-                                        </Trigger>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="Border" Property="Opacity" Value="0.8"/>
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                        <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}"/>
-                        <Setter Property="FontSize" Value="13"/>
-                        <Setter Property="FontWeight" Value="SemiBold"/>
-                    </Style>
-                </TabControl.Resources>
-
-                <!-- Skills Tab -->
-                <TabItem>
-                    <TabItem.Header>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="⚔️ Skills"/>
-                            <TextBlock Text=" (" Foreground="{StaticResource SecondaryTextBrush}" FontSize="10" VerticalAlignment="Center"/>
-                            <TextBlock Text="{Binding SkillCount}" FontSize="10" VerticalAlignment="Center"/>
-                            <TextBlock Text=")" Foreground="{StaticResource SecondaryTextBrush}" FontSize="10" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </TabItem.Header>
-                    <Border Background="{StaticResource SecondaryBackgroundBrush}" 
-                            CornerRadius="0,4,4,4"
-                            Padding="8">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
-
-                            <!-- Table Header -->
-                            <Border Grid.Row="0" 
-                                    Background="{StaticResource TertiaryBackgroundBrush}"
-                                    CornerRadius="4"
-                                    Padding="10,8"
-                                    Margin="0,0,0,4">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="32"/>
-                                        <ColumnDefinition Width="2*"/>
-                                        <ColumnDefinition Width="0.6*"/>
-                                        <ColumnDefinition Width="0.5*"/>
-                                        <ColumnDefinition Width="0.5*"/>
-                                        <ColumnDefinition Width="0.5*"/>
-                                        <ColumnDefinition Width="0.5*"/>
-                                        <ColumnDefinition Width="0.5*"/>
-                                        <ColumnDefinition Width="0.6*"/>
-                                        <ColumnDefinition Width="1.2*"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <TextBlock Grid.Column="0" Text="" FontWeight="Bold" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}"/>
-                                    <TextBlock Grid.Column="1" Text="Skill" FontWeight="Bold" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}"/>
-                                    <TextBlock Grid.Column="2" Text="Hits" FontWeight="Bold" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" HorizontalAlignment="Center"/>
-                                    <TextBlock Grid.Column="3" Text="Crit" FontWeight="Bold" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" HorizontalAlignment="Center"/>
-                                    <TextBlock Grid.Column="4" Text="Parry" FontWeight="Bold" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" HorizontalAlignment="Center"/>
-                                    <TextBlock Grid.Column="5" Text="Perf" FontWeight="Bold" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" HorizontalAlignment="Center"/>
-                                    <TextBlock Grid.Column="6" Text="x2" FontWeight="Bold" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" HorizontalAlignment="Center"/>
-                                    <TextBlock Grid.Column="7" Text="Back" FontWeight="Bold" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" HorizontalAlignment="Center"/>
-                                    <TextBlock Grid.Column="8" Text="Avg" FontWeight="Bold" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" HorizontalAlignment="Center"/>
-                                    <TextBlock Grid.Column="9" Text="Damage" FontWeight="Bold" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" HorizontalAlignment="Right" Margin="0,0,8,0"/>
+                                    <Border Background="Transparent" Padding="10,4">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="28"/>
+                                                <ColumnDefinition Width="2*"/>
+                                                <ColumnDefinition Width="40"/>
+                                                <ColumnDefinition Width="55"/>
+                                                <ColumnDefinition Width="55"/>
+                                                <ColumnDefinition Width="55"/>
+                                                <ColumnDefinition Width="50"/>
+                                                <ColumnDefinition Width="50"/>
+                                                <ColumnDefinition Width="70"/>
+                                                <ColumnDefinition Width="65"/>
+                                                <ColumnDefinition Width="65"/>
+                                                <ColumnDefinition Width="1.3*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Width="24" Height="24" CornerRadius="3"
+                                                    Background="{StaticResource TertiaryBackgroundBrush}">
+                                                <Image Source="{Binding SkillIcon, Converter={StaticResource SafeImageSourceConverter}}"
+                                                       Stretch="Uniform" RenderOptions.BitmapScalingMode="LowQuality"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="1" Text="{Binding SkillName}"
+                                                       FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource PrimaryTextBrush}"
+                                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="4,0,4,0"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding HitCountFormatted}"
+                                                       FontSize="10" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource SecondaryTextBrush}" HorizontalAlignment="Center"/>
+                                            <TextBlock Grid.Column="3" Text="{Binding CriticalRateFormatted}"
+                                                       FontSize="10" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource CriticalColorBrush}" HorizontalAlignment="Center"/>
+                                            <TextBlock Grid.Column="4" Text="{Binding BackAttackRateFormatted}"
+                                                       FontSize="10" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource BackAttackColorBrush}" HorizontalAlignment="Center"/>
+                                            <TextBlock Grid.Column="5" Text="{Binding PerfectRateFormatted}"
+                                                       FontSize="10" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource PerfectColorBrush}" HorizontalAlignment="Center"/>
+                                            <TextBlock Grid.Column="6" Text="{Binding DoubleDamageRateFormatted}"
+                                                       FontSize="10" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource DoubleDamageColorBrush}" HorizontalAlignment="Center"/>
+                                            <TextBlock Grid.Column="7" Text="{Binding ParryRateFormatted}"
+                                                       FontSize="10" VerticalAlignment="Center"
+                                                       Foreground="#FF6B6B" HorizontalAlignment="Center"/>
+                                            <TextBlock Grid.Column="8" Text="{Binding AverageDamageFormatted}"
+                                                       FontSize="10" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource PrimaryTextBrush}" HorizontalAlignment="Center"/>
+                                            <TextBlock Grid.Column="9" Text="{Binding MinHitFormatted}"
+                                                       FontSize="10" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource SecondaryTextBrush}" HorizontalAlignment="Center"/>
+                                            <TextBlock Grid.Column="10" Text="{Binding MaxHitFormatted}"
+                                                       FontSize="10" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource SecondaryTextBrush}" HorizontalAlignment="Center"/>
+                                            <TextBlock Grid.Column="11" FontSize="10" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource DamageBarBrush}"
+                                                       HorizontalAlignment="Right" Margin="0,0,6,0">
+                                                <Run Text="{Binding TotalDamageFormatted, Mode=OneWay}" FontWeight="Bold"/>
+                                                <Run Text=" (" Foreground="{StaticResource SecondaryTextBrush}"/>
+                                                <Run Text="{Binding DamagePercentageFormatted, Mode=OneWay}" Foreground="{StaticResource SecondaryTextBrush}"/>
+                                                <Run Text=")" Foreground="{StaticResource SecondaryTextBrush}"/>
+                                            </TextBlock>
+                                        </Grid>
+                                    </Border>
                                 </Grid>
-                            </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
 
-                            <!-- Skills List - Virtualized -->
-                            <ListBox Grid.Row="1" 
-                                     ItemsSource="{Binding Skills}"
-                                     Style="{StaticResource VirtualizedListStyle}">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Background="{StaticResource PrimaryBackgroundBrush}"
-                                                CornerRadius="3"
-                                                Padding="10,5"
-                                                Margin="0,0,0,2">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="32"/>
-                                                    <ColumnDefinition Width="2*"/>
-                                                    <ColumnDefinition Width="0.6*"/>
-                                                    <ColumnDefinition Width="0.5*"/>
-                                                    <ColumnDefinition Width="0.5*"/>
-                                                    <ColumnDefinition Width="0.5*"/>
-                                                    <ColumnDefinition Width="0.5*"/>
-                                                    <ColumnDefinition Width="0.5*"/>
-                                                    <ColumnDefinition Width="0.6*"/>
-                                                    <ColumnDefinition Width="1.2*"/>
-                                                </Grid.ColumnDefinitions>
+                <!-- LOG VIEW -->
+                <Grid Visibility="{Binding ShowCombatLog, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
 
-                                                <!-- Skill Icon -->
-                                                <Border Grid.Column="0"
-                                                        Width="24"
-                                                        Height="24"
-                                                        CornerRadius="3"
-                                                        Background="{StaticResource TertiaryBackgroundBrush}">
-                                                    <Image Source="{Binding SkillIcon, Converter={StaticResource SafeImageSourceConverter}}" 
-                                                           Stretch="Uniform"
-                                                           RenderOptions.BitmapScalingMode="LowQuality"/>
-                                                </Border>
-
-                                                <!-- Skill Name -->
-                                                <TextBlock Grid.Column="1" 
-                                                           Text="{Binding SkillName}" 
-                                                           FontWeight="SemiBold" 
-                                                           FontSize="11" 
-                                                           Foreground="{StaticResource PrimaryTextBrush}"
-                                                           VerticalAlignment="Center"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           Margin="4,0,0,0"/>
-
-                                                <!-- Hit Count -->
-                                                <TextBlock Grid.Column="2" 
-                                                           Text="{Binding HitCountFormatted}" 
-                                                           FontSize="10" 
-                                                           VerticalAlignment="Center"
-                                                           Foreground="{StaticResource PrimaryTextBrush}" 
-                                                           HorizontalAlignment="Center"/>
-
-                                                <!-- Critical Rate -->
-                                                <TextBlock Grid.Column="3" 
-                                                           Text="{Binding CriticalRateFormatted}" 
-                                                           FontSize="10" 
-                                                           VerticalAlignment="Center"
-                                                           Foreground="{StaticResource CriticalColorBrush}" 
-                                                           HorizontalAlignment="Center"/>
-
-                                                <!-- Parry Rate -->
-                                                <TextBlock Grid.Column="4" 
-                                                           Text="{Binding ParryRateFormatted}" 
-                                                           FontSize="10" 
-                                                           VerticalAlignment="Center"
-                                                           Foreground="#FF6666" 
-                                                           HorizontalAlignment="Center"/>
-
-                                                <!-- Perfect Rate -->
-                                                <TextBlock Grid.Column="5" 
-                                                           Text="{Binding PerfectRateFormatted}" 
-                                                           FontSize="10" 
-                                                           VerticalAlignment="Center"
-                                                           Foreground="{StaticResource PrimaryTextBrush}" 
-                                                           HorizontalAlignment="Center"/>
-
-                                                <!-- Double Damage Rate -->
-                                                <TextBlock Grid.Column="6" 
-                                                           Text="{Binding DoubleDamageRateFormatted}" 
-                                                           FontSize="10" 
-                                                           VerticalAlignment="Center"
-                                                           Foreground="#66FF66" 
-                                                           HorizontalAlignment="Center"/>
-
-                                                <!-- Back Attack Rate -->
-                                                <TextBlock Grid.Column="7" 
-                                                           Text="{Binding BackAttackRateFormatted}" 
-                                                           FontSize="10" 
-                                                           VerticalAlignment="Center"
-                                                           Foreground="{StaticResource AccentBrush}" 
-                                                           HorizontalAlignment="Center"/>
-
-                                                <!-- Average Damage -->
-                                                <TextBlock Grid.Column="8" 
-                                                           Text="{Binding AverageDamageFormatted}" 
-                                                           FontSize="10" 
-                                                           VerticalAlignment="Center"
-                                                           Foreground="{StaticResource PrimaryTextBrush}" 
-                                                           HorizontalAlignment="Center"/>
-
-                                                <!-- Damage -->
-                                                <TextBlock Grid.Column="9" 
-                                                           FontSize="10" 
-                                                           VerticalAlignment="Center"
-                                                           Foreground="{StaticResource DamageBarBrush}" 
-                                                           HorizontalAlignment="Right"
-                                                           Margin="0,0,4,0">
-                                                    <Run Text="{Binding TotalDamageFormatted, Mode=OneWay}" FontWeight="Bold"/>
-                                                    <Run Text=" (" Foreground="{StaticResource SecondaryTextBrush}"/><Run Text="{Binding DamagePercentageFormatted, Mode=OneWay}" Foreground="{StaticResource SecondaryTextBrush}"/><Run Text=")" Foreground="{StaticResource SecondaryTextBrush}"/>
-                                                </TextBlock>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
+                    <!-- Column headers -->
+                    <Border Grid.Row="0"
+                            Background="{StaticResource TertiaryBackgroundBrush}"
+                            BorderBrush="#21262D" BorderThickness="0,0,0,1"
+                            Padding="10,6">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="70"/>
+                                <ColumnDefinition Width="28"/>
+                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="1.5*"/>
+                                <ColumnDefinition Width="65"/>
+                                <ColumnDefinition Width="100"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Time"   Style="{StaticResource ColHeader}"/>
+                            <TextBlock Grid.Column="1"               Style="{StaticResource ColHeader}"/>
+                            <TextBlock Grid.Column="2" Text="Skill"  Style="{StaticResource ColHeader}" Margin="4,0,0,0"/>
+                            <TextBlock Grid.Column="3" Text="Target" Style="{StaticResource ColHeader}"/>
+                            <TextBlock Grid.Column="4" Text="Damage" Style="{StaticResource ColHeader}" HorizontalAlignment="Right"/>
+                            <TextBlock Grid.Column="5" Text="Flags"  Style="{StaticResource ColHeader}" HorizontalAlignment="Right"/>
                         </Grid>
                     </Border>
-                </TabItem>
 
-                <!-- Combat Log Tab -->
-                <TabItem Header="📜 Combat Log">
-                    <Border Background="{StaticResource SecondaryBackgroundBrush}" 
-                            CornerRadius="0,4,4,4"
-                            Padding="8">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
-
-                            <!-- Table Header -->
-                            <Border Grid.Row="0" 
-                                    Background="{StaticResource TertiaryBackgroundBrush}"
-                                    CornerRadius="4"
-                                    Padding="10,8"
-                                    Margin="0,0,0,4">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="70"/>
-                                        <ColumnDefinition Width="28"/>
-                                        <ColumnDefinition Width="2*"/>
-                                        <ColumnDefinition Width="1.5*"/>
-                                        <ColumnDefinition Width="60"/>
-                                        <ColumnDefinition Width="100"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <TextBlock Grid.Column="0" Text="Time" FontWeight="Bold" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}"/>
-                                    <TextBlock Grid.Column="1" Text="" FontWeight="Bold" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}"/>
-                                    <TextBlock Grid.Column="2" Text="Skill" FontWeight="Bold" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}"/>
-                                    <TextBlock Grid.Column="3" Text="Target" FontWeight="Bold" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}"/>
-                                    <TextBlock Grid.Column="4" Text="Damage" FontWeight="Bold" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" HorizontalAlignment="Right"/>
-                                    <TextBlock Grid.Column="5" Text="Flags" FontWeight="Bold" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" HorizontalAlignment="Right"/>
-                                </Grid>
-                            </Border>
-
-                            <!-- Combat Log List - Virtualized -->
-                            <ListBox Grid.Row="1" 
-                                     ItemsSource="{Binding CombatLog}"
-                                     Style="{StaticResource VirtualizedListStyle}">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Background="{StaticResource PrimaryBackgroundBrush}"
-                                                CornerRadius="2"
-                                                Padding="10,3"
-                                                Margin="0,0,0,1">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="70"/>
-                                                    <ColumnDefinition Width="28"/>
-                                                    <ColumnDefinition Width="2*"/>
-                                                    <ColumnDefinition Width="1.5*"/>
-                                                    <ColumnDefinition Width="60"/>
-                                                    <ColumnDefinition Width="100"/>
-                                                </Grid.ColumnDefinitions>
-
-                                                <TextBlock Grid.Column="0" 
-                                                           Text="{Binding TimeFormatted}" 
-                                                           FontSize="9" 
-                                                           FontFamily="Consolas"
-                                                           VerticalAlignment="Center"
-                                                           Foreground="{StaticResource SecondaryTextBrush}"/>
-
-                                                <!-- Skill Icon -->
-                                                <Border Grid.Column="1"
-                                                        Width="20"
-                                                        Height="20"
-                                                        CornerRadius="2"
-                                                        Background="{StaticResource TertiaryBackgroundBrush}">
-                                                    <Image Source="{Binding SkillIcon, Converter={StaticResource SafeImageSourceConverter}}" 
-                                                           Stretch="Uniform"
-                                                           RenderOptions.BitmapScalingMode="LowQuality"/>
-                                                </Border>
-
-                                                <TextBlock Grid.Column="2" 
-                                                           Text="{Binding SkillName}" 
-                                                           FontSize="10" 
-                                                           VerticalAlignment="Center"
-                                                           Foreground="{StaticResource PrimaryTextBrush}"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           Margin="4,0,0,0"/>
-
-                                                <TextBlock Grid.Column="3" 
-                                                           Text="{Binding TargetName}" 
-                                                           FontSize="10" 
-                                                           VerticalAlignment="Center"
-                                                           Foreground="{StaticResource SecondaryTextBrush}"
-                                                           TextTrimming="CharacterEllipsis"/>
-
-                                                <TextBlock Grid.Column="4" 
-                                                           Text="{Binding DamageFormatted}" 
-                                                           FontSize="10" 
-                                                           FontWeight="Bold"
-                                                           VerticalAlignment="Center"
-                                                           HorizontalAlignment="Right">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="Foreground" Value="{StaticResource DamageBarBrush}"/>
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding IsCritical}" Value="True">
-                                                                    <Setter Property="Foreground" Value="{StaticResource CriticalColorBrush}"/>
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
-
-                                                <TextBlock Grid.Column="5" 
-                                                           Text="{Binding Flags}" 
-                                                           FontSize="8" 
-                                                           FontWeight="Bold"
-                                                           VerticalAlignment="Center"
-                                                           Foreground="{StaticResource CriticalColorBrush}"
-                                                           HorizontalAlignment="Right"/>
-                                            </Grid>
+                    <!-- Log list -->
+                    <ListBox Grid.Row="1" ItemsSource="{Binding CombatLog}" Style="{StaticResource TableListBox}">
+                        <ListBox.Resources>
+                            <Style TargetType="ScrollBar" BasedOn="{StaticResource SlimScrollBarStyle}"/>
+                        </ListBox.Resources>
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="0"/>
+                                <Setter Property="Margin" Value="0"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="Background" Value="{StaticResource PrimaryBackgroundBrush}"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <Border Background="{TemplateBinding Background}">
+                                                <ContentPresenter/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                                        <Setter Property="Background" Value="#131820"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="Transparent" Padding="10,3">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="70"/>
+                                            <ColumnDefinition Width="28"/>
+                                            <ColumnDefinition Width="2*"/>
+                                            <ColumnDefinition Width="1.5*"/>
+                                            <ColumnDefinition Width="65"/>
+                                            <ColumnDefinition Width="100"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding TimeFormatted}"
+                                                   FontSize="9" FontFamily="Consolas" VerticalAlignment="Center"
+                                                   Foreground="{StaticResource SecondaryTextBrush}"/>
+                                        <Border Grid.Column="1" Width="20" Height="20" CornerRadius="2"
+                                                Background="{StaticResource TertiaryBackgroundBrush}">
+                                            <Image Source="{Binding SkillIcon, Converter={StaticResource SafeImageSourceConverter}}"
+                                                   Stretch="Uniform" RenderOptions.BitmapScalingMode="LowQuality"/>
                                         </Border>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                        </Grid>
-                    </Border>
-                </TabItem>
-            </TabControl>
+                                        <TextBlock Grid.Column="2" Text="{Binding SkillName}"
+                                                   FontSize="10" VerticalAlignment="Center"
+                                                   Foreground="{StaticResource PrimaryTextBrush}"
+                                                   TextTrimming="CharacterEllipsis" Margin="4,0,0,0"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding TargetName}"
+                                                   FontSize="10" VerticalAlignment="Center"
+                                                   Foreground="{StaticResource SecondaryTextBrush}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="4" Text="{Binding DamageFormatted}"
+                                                   FontSize="10" FontWeight="Bold"
+                                                   VerticalAlignment="Center" HorizontalAlignment="Right">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{StaticResource DamageBarBrush}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsCritical}" Value="True">
+                                                            <Setter Property="Foreground" Value="{StaticResource CriticalColorBrush}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <TextBlock Grid.Column="5" Text="{Binding Flags}"
+                                                   FontSize="8" FontWeight="Bold"
+                                                   VerticalAlignment="Center" HorizontalAlignment="Right"
+                                                   Foreground="{StaticResource CriticalColorBrush}"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Grid>
         </Grid>
     </Border>
 </Window>
