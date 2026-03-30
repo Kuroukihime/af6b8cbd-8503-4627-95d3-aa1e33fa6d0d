@@ -160,7 +160,7 @@ namespace AionDpsMeter.UI.ViewModels
             }
 
             // Sort by total damage
-            var sortedPlayers = Players.OrderByDescending(p => p.TotalDamage).ToList();
+            var sortedPlayers = Players.Where(r=> r.TotalDamage >0).OrderByDescending(p => p.TotalDamage).ToList();
             Players.Clear();
             foreach (var player in sortedPlayers)
             {
