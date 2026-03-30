@@ -7,7 +7,7 @@
         mc:Ignorable="d"
         Title="AION2 DPS Meter"
         Height="170"
-        Width="320"
+        Width="360"
         MinHeight="80"
         MinWidth="200"
         WindowStyle="None"
