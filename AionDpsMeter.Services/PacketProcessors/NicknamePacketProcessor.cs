@@ -1,528 +1,264 @@
-﻿using AionDpsMeter.Core.Models;
-using AionDpsMeter.Services.Services.Entity;
+﻿using AionDpsMeter.Services.Services.Entity;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Text;
-using System.Xml.Linq;
+using AionDpsMeter.Core.Data;
+using AionDpsMeter.Services.Extensions;
 
 namespace AionDpsMeter.Services.PacketProcessors
 {
-
-
-
     public sealed class NicknamePacketProcessor
     {
-
         private readonly EntityTracker entityTracker;
         private readonly ILogger<NicknamePacketProcessor> logger;
-        public NicknamePacketProcessor(EntityTracker entityTracker, ILogger<NicknamePacketProcessor>  logger)
+
+        private const int NameScanWindow = 10;
+        private const byte NameBlockMarker = 7;
+        private const int MaxNameLength = 72;
+
+        private static readonly byte[] InfoTag1 = [0x33, 0x36];
+        private static readonly byte[] InfoTag2 = [0x44, 0x36];
+
+        public NicknamePacketProcessor(EntityTracker entityTracker, ILogger<NicknamePacketProcessor> logger)
         {
             this.entityTracker = entityTracker;
             this.logger = logger;
         }
 
+        private readonly record struct PlayerInfoResult(int EntityId, string Name, int ServerId, int JobCode);
+        private readonly record struct NameReadResult(string Name, int EndOffset);
 
-        public readonly record struct NicknameEntry(int ActorId, string Nickname, string Strategy);
-
-      
         public void Process(byte[] packet)
         {
-            if (packet == null || packet.Length < 4)
+            if ( packet.Length < 4) return;
+
+            TryExtractAndApplyPlayerInfo(packet, 0, packet.Length);
+        }
+
+        private void TryExtractAndApplyPlayerInfo(byte[] data, int startOffset, int length)
+        {
+            int endOffset = startOffset + length;
+
+            if (TryParseInfoTag1(data, endOffset, out PlayerInfoResult selfInfo))
+            {
+                string displayName = BuildDisplayName(selfInfo.Name, selfInfo.ServerId);
+                entityTracker.UpdatePlayerEntityName(selfInfo.EntityId, displayName);
+                return;
+            }
+
+            if (!TryParseInfoTag2(data, endOffset, out PlayerInfoResult otherInfo))
                 return;
 
-            var results = new List<NicknameEntry>();
-
-            ParseDirectNickname(packet, results);
-            ParseActorNameBinding(packet, results);
-            ParseLootAttribution(packet, results);
-            ParseCastNet(packet, results);
-
-            foreach (var entry in results)
-                HandleResult(entry);
+            string otherDisplayName = BuildDisplayName(otherInfo.Name, otherInfo.ServerId);
+            entityTracker.UpdatePlayerEntityName(otherInfo.EntityId, otherDisplayName);
         }
 
-     
-        // [VarInt length][0x04][0x8D]...[offset=10: VarInt actorId][nameLen byte][UTF-8 name]
-        // ──────────────────────────────────────────────────────────────
-        private void ParseDirectNickname(byte[] packet, List<NicknameEntry> results)
+        private bool TryParseInfoTag1(byte[] data, int endOffset, out PlayerInfoResult result)
         {
-            int offset = 0;
+            result = default;
 
-            while (offset + 12 < packet.Length)
-            {
-                int searchStart = offset;
-                int markerPos = FindMarker(packet, searchStart, 0x04, 0x8D);
-                if (markerPos < 0)
-                    break;
-
-            
-                int recordStart = markerPos;
-                
-                int varIntStart = FindVarIntEndingAt(packet, markerPos);
-                if (varIntStart >= 0)
-                    recordStart = varIntStart;
-
-                int actorOffset = recordStart + 10;
-                if (actorOffset >= packet.Length)
-                {
-                    offset = markerPos + 2;
-                    continue;
-                }
-
-                if (!TryReadVarInt(packet, actorOffset, out int actorId, out int actorLen) || actorLen <= 0)
-                {
-                    offset = markerPos + 2;
-                    continue;
-                }
-
-                int namelenPos = actorOffset + actorLen;
-                if (namelenPos >= packet.Length)
-                {
-                    offset = markerPos + 2;
-                    continue;
-                }
-
-                int nameLength = packet[namelenPos] & 0xFF;
-                if (nameLength < 1 || nameLength > 72)
-                {
-                    offset = markerPos + 2;
-                    continue;
-                }
-
-                int nameStart = namelenPos + 1;
-                int nameEnd = nameStart + nameLength;
-                if (nameEnd > packet.Length)
-                {
-                    offset = markerPos + 2;
-                    continue;
-                }
-
-                string? name = DecodeUtf8(packet, nameStart, nameLength);
-                string? sanitized = SanitizeNickname(name);
-                if (sanitized != null && actorId >= 100)
-                    results.Add(new NicknameEntry(actorId, sanitized, "DirectNickname"));
-
-                offset = nameEnd;
-            }
-        }
-
-
-        //   0x07 → [nameLen][UTF-8 name]
-        private void ParseActorNameBinding(byte[] packet, List<NicknameEntry> results)
-        {
-            int i = 0;
-            int lastActorId = -1;
-            int lastAnchorEnd = -1;
-            var namedActors = new HashSet<int>();
-
-            while (i < packet.Length)
-            {
-                if (packet[i] == 0x36)
-                {
-                    if (TryReadVarInt(packet, i + 1, out int actorId, out int actorLen) &&
-                        actorLen > 0 && actorId >= 100)
-                    {
-                        lastActorId = actorId;
-                        lastAnchorEnd = i + 1 + actorLen;
-                    }
-                    else
-                    {
-                        lastActorId = -1;
-                    }
-
-                    i++;
-                    continue;
-                }
-
-                if (packet[i] == 0x07 && lastActorId >= 0 && !namedActors.Contains(lastActorId))
-                {
-                    if (TryReadUtf8Name(packet, i, maxNameLen: 16, out string? name, out int consumed))
-                    {
-                        int distance = i - lastAnchorEnd;
-                        if (distance >= 0 && name != null)
-                        {
-                            results.Add(new NicknameEntry(lastActorId, name, "ActorNameBinding"));
-                            namedActors.Add(lastActorId);
-                            lastActorId = -1;
-                            i += consumed;
-                            continue;
-                        }
-                    }
-                }
-
-                i++;
-            }
-        }
-
-        // ──────────────────────────────────────────────────────────────
-  
-        //   actorId reverse VarInt search
-        // ──────────────────────────────────────────────────────────────
-        private static readonly byte[] LootMarkerFirstBytes = { 0xF5, 0xF8 };
-        private static readonly byte[] LootMarkerSecondBytes = { 0x03, 0xA3 };
-
-        private void ParseLootAttribution(byte[] packet, List<NicknameEntry> results)
-        {
-            var candidates = new Dictionary<int, NicknameEntry>();
-            int idx = 0;
-
-            while (idx + 2 < packet.Length)
-            {
-                byte b0 = packet[idx];
-                byte b1 = packet[idx + 1];
-
-                bool isMarker = Array.IndexOf(LootMarkerFirstBytes, b0) >= 0 &&
-                                Array.IndexOf(LootMarkerSecondBytes, b1) >= 0;
-
-                if (!isMarker)
-                {
-                    idx++;
-                    continue;
-                }
-
-                int actorId = -1;
-                int minOffset = Math.Max(0, idx - 8);
-                for (int actorOffset = idx - 1; actorOffset >= minOffset; actorOffset--)
-                {
-                    if (!TryReadVarInt(packet, actorOffset, out int candidateId, out int candidateLen))
-                        continue;
-                    if (candidateLen <= 0 || actorOffset + candidateLen != idx)
-                        continue;
-                    if (candidateId < 100 || candidateId > 99999)
-                        continue;
-
-                    actorId = candidateId;
-                    break;
-                }
-
-                if (actorId < 0)
-                {
-                    idx++;
-                    continue;
-                }
-
-                int lengthIdx = idx + 2;
-                if (lengthIdx >= packet.Length)
-                {
-                    idx++;
-                    continue;
-                }
-
-                int nameLength = packet[lengthIdx] & 0xFF;
-                if (nameLength < 1 || nameLength > 24)
-                {
-                    idx++;
-                    continue;
-                }
-
-                int nameStart = lengthIdx + 1;
-                int nameEnd = nameStart + nameLength;
-                if (nameEnd > packet.Length)
-                {
-                    idx++;
-                    continue;
-                }
-
-                string? name = DecodeUtf8Strict(packet, nameStart, nameLength);
-                string? sanitized = SanitizeNickname(name);
-                if (sanitized == null)
-                {
-                    idx = nameEnd;
-                    continue;
-                }
-
-                if (!candidates.TryGetValue(actorId, out var existing) ||
-                    sanitized.Length > existing.Nickname.Length)
-                {
-                    candidates[actorId] = new NicknameEntry(actorId, sanitized, "LootAttribution");
-                }
-
-             
-                idx = SkipGuildName(packet, nameEnd);
-            }
-
-            foreach (var entry in candidates.Values)
-                results.Add(entry);
-        }
-
-      
- 
-        //   VarInt actorId → ... [0x01][0x07][nameLen][UTF-8 name]
-        private void ParseCastNet(byte[] packet, List<NicknameEntry> results)
-        {
-            int originOffset = 0;
-
-            while (originOffset < packet.Length)
-            {
-                if (!TryReadVarInt(packet, originOffset, out int actorId, out int varIntLen) || varIntLen <= 0)
-                {
-                    originOffset++;
-                    continue;
-                }
-
-                int innerOffset = originOffset + varIntLen;
-                if (innerOffset + 6 >= packet.Length)
-                {
-                    originOffset++;
-                    continue;
-                }
-
-                if (packet[innerOffset + 3] == 0x01 && packet[innerOffset + 4] == 0x07)
-                {
-                    int nameLength = packet[innerOffset + 5] & 0xFF;
-                    int nameStart = innerOffset + 6;
-                    int nameEnd = nameStart + nameLength;
-
-                    if (nameEnd <= packet.Length && actorId >= 100)
-                    {
-                        string? name = DecodeUtf8(packet, nameStart, nameLength);
-                        string? sanitized = SanitizeNickname(name);
-                        if (sanitized != null)
-                        {
-                            results.Add(new NicknameEntry(actorId, sanitized, "CastNet"));
-                            originOffset = nameEnd;
-                            continue;
-                        }
-                    }
-                }
-
-                originOffset++;
-            }
-        }
-
-      
-        private void HandleResult(NicknameEntry entry)
-        {
-            entityTracker.UpdatePlayerEntityName(entry.ActorId, entry.Nickname);
-            Debug.WriteLine($"[{entry.Strategy}] ActorId={entry.ActorId}, Nickname=\"{entry.Nickname}\"");
-            logger.LogDebug($"[{entry.Strategy}] ActorId={entry.ActorId}, Nickname=\"{entry.Nickname}\"");
-        }
-
-      
-        private static bool TryReadVarInt(byte[] data, int offset, out int value, out int bytesRead)
-        {
-            value = 0;
-            bytesRead = 0;
-            int shift = 0;
-
-            while (true)
-            {
-                if (offset + bytesRead >= data.Length || shift >= 35)
-                {
-                    value = -1;
-                    bytesRead = -1;
-                    return false;
-                }
-
-                int b = data[offset + bytesRead] & 0xFF;
-                bytesRead++;
-                value |= (b & 0x7F) << shift;
-
-                if ((b & 0x80) == 0)
-                    return true;
-
-                shift += 7;
-            }
-        }
-
-        /// <summary>
-    
-        /// [0x07][length byte][UTF-8 bytes].
-        /// </summary>
-        private bool TryReadUtf8Name(byte[] packet, int anchorIndex, int maxNameLen,
-                                     out string? name, out int totalConsumed)
-        {
-            name = null;
-            totalConsumed = 0;
-
-            int lengthIndex = anchorIndex + 1;
-            if (lengthIndex >= packet.Length)
+            int tagPos = data.IndexOfArray(InfoTag1);
+            if (tagPos < 0)
                 return false;
 
-            int nameLength = packet[lengthIndex] & 0xFF;
-            if (nameLength < 1 || nameLength > maxNameLen)
+            int pos = tagPos + 2;
+            if (pos >= endOffset)
                 return false;
 
-            int nameStart = lengthIndex + 1;
-            int nameEnd = nameStart + nameLength;
-            if (nameEnd > packet.Length)
+            var entityVarInt = data.ReadVarInt(pos);
+            int entityId = entityVarInt.Value;
+            if (entityId < 1)
                 return false;
 
-            string? decoded = DecodeUtf8Strict(packet, nameStart, nameLength);
-            string? sanitized = SanitizeNickname(decoded);
-            if (sanitized == null)
+            pos += entityVarInt.Length;
+
+            var nameRead = ReadPlayerName(data, pos, endOffset);
+            if (!nameRead.HasValue)
                 return false;
 
-            name = sanitized;
-            totalConsumed = nameEnd - anchorIndex;
+            int afterNameOffset = nameRead.Value.EndOffset;
+            int serverId = (afterNameOffset + 2 <= endOffset)
+                ? (data[afterNameOffset] | (data[afterNameOffset + 1] << 8))
+                : -1;
+            int jobCode = (afterNameOffset + 3 <= endOffset)
+                ? data[afterNameOffset + 2]
+                : -1;
+
+            result = new PlayerInfoResult(entityId, nameRead.Value.Name, serverId, jobCode);
             return true;
         }
 
-     
-        private static int FindMarker(byte[] data, int startIndex, byte first, byte second)
+        private bool TryParseInfoTag2(byte[] data, int endOffset, out PlayerInfoResult result)
         {
-            for (int i = startIndex; i + 1 < data.Length; i++)
+            result = default;
+
+            int tagPos = data.IndexOfArray(InfoTag2);
+            if (tagPos < 0)
+                return false;
+
+            int pos = tagPos + 2;
+            if (pos >= endOffset)
+                return false;
+
+            var entityVarInt = data.ReadVarInt(pos);
+            int entityId = entityVarInt.Value;
+            if (entityId < 1)
+                return false;
+
+            pos += entityVarInt.Length;
+
+            // Skip two varints that precede the name block in other-player packets
+            if (pos < endOffset) pos += data.ReadVarInt(pos).Length;
+            if (pos < endOffset) pos += data.ReadVarInt(pos).Length;
+
+            var nameRead = ReadPlayerName(data, pos, endOffset);
+            if (!nameRead.HasValue)
+                return false;
+
+            int afterNameOffset = nameRead.Value.EndOffset;
+            int jobCode = -1;
+
+            var jobCodeVarInt = data.ReadVarInt(afterNameOffset);
+            int rawJobCode = jobCodeVarInt.Value;
+            if (rawJobCode < 1)
             {
-                if (data[i] == first && data[i + 1] == second)
-                    return i;
+                jobCode = rawJobCode;
+            }
+            else
+            {
+                afterNameOffset += jobCodeVarInt.Length;
             }
 
-            return -1;
+            var validServerIds = ServerMap.Servers.Keys.ToHashSet();
+            int serverId = FindServerId(data, afterNameOffset, endOffset, validServerIds);
+
+            result = new PlayerInfoResult(entityId, nameRead.Value.Name, serverId, jobCode);
+            return true;
         }
 
-     
-        private static int FindVarIntEndingAt(byte[] data, int endPos)
+        private NameReadResult? ReadPlayerName(byte[] data, int searchStart, int endOffset)
         {
-            for (int len = 1; len <= 5 && endPos - len >= 0; len++)
+            int scanEnd = Math.Min(searchStart + NameScanWindow, endOffset);
+
+            for (int i = searchStart; i < scanEnd; i++)
             {
-                int candidateStart = endPos - len;
-                if (TryReadVarInt(data, candidateStart, out _, out int bytesRead) &&
-                    bytesRead == len)
+                if (data[i] != NameBlockMarker)
+                    continue;
+
+                int pos = i + 1;
+                var nameLengthVarInt = data.ReadVarInt(pos);
+                int nameByteLength = nameLengthVarInt.Value;
+
+                if (nameByteLength < 1 || nameByteLength > MaxNameLength)
+                    return null;
+
+                pos += nameLengthVarInt.Length;
+
+                if (pos + nameByteLength > endOffset)
+                    return null;
+
+                string name = DecodeGameString(data, pos, nameByteLength);
+
+                if (string.IsNullOrEmpty(name) || IsAllDigits(name))
+                    return null;
+
+                return new NameReadResult(name, pos + nameByteLength);
+            }
+
+            return null;
+        }
+
+        private int FindServerId(byte[] data, int searchStart, int endOffset, HashSet<int>? validServerIds)
+        {
+            int lastSearchPos = endOffset - 1;
+
+            for (int i = searchStart; i < lastSearchPos; i++)
+            {
+                int candidateId = data[i] | (data[i + 1] << 8);
+
+                if (validServerIds != null)
                 {
-                    return candidateStart;
+                    if (validServerIds.Contains(candidateId))
+                        return candidateId;
+                }
+                else
+                {
+                    if (candidateId < 1001 || candidateId > 2999 || i + 3 > endOffset)
+                        continue;
+
+                    byte followingByteLen = data[i + 2];
+                    if (followingByteLen >= 2 && followingByteLen <= 24 && i + 3 + followingByteLen <= endOffset)
+                    {
+                        string followingText = DecodeGameString(data, i + 3, followingByteLen);
+                        if (!string.IsNullOrEmpty(followingText) && IsAllDigits(followingText))
+                            return candidateId;
+                    }
                 }
             }
 
             return -1;
         }
 
-     
-        private static int SkipGuildName(byte[] packet, int startIndex)
+        public string DecodeGameString(byte[] data, int offset, int maxLen)
         {
-            if (startIndex >= packet.Length)
-                return startIndex;
+            byte[] outputBuffer = new byte[maxLen * 4];
+            int writePos = 0;
+            int readEnd = offset + maxLen;
 
-            int offset = startIndex;
-            if (packet[offset] == 0x00)
+            for (int i = offset; i < readEnd; i++)
             {
-                offset++;
-                if (offset >= packet.Length)
-                    return offset;
-            }
+                byte currentByte = data[i];
 
-            int length = packet[offset] & 0xFF;
-            if (length < 1 || length > 32)
-                return offset;
-
-            int nameEnd = offset + 1 + length;
-            if (nameEnd > packet.Length)
-                return offset;
-
-          
-            return DecodeUtf8Strict(packet, offset + 1, length) != null
-                ? nameEnd
-                : offset;
-        }
-
-    
-        private static string? DecodeUtf8(byte[] data, int offset, int length)
-        {
-            if (offset < 0 || offset + length > data.Length || length <= 0)
-                return null;
-
-            try
-            {
-                return Encoding.UTF8.GetString(data, offset, length);
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-      
-        private static string? DecodeUtf8Strict(byte[] data, int offset, int length)
-        {
-            if (offset < 0 || offset + length > data.Length || length <= 0)
-                return null;
-
-            try
-            {
-                var decoder = Encoding.UTF8.GetDecoder();
-                decoder.Fallback = new DecoderExceptionFallback();
-
-                int charCount = decoder.GetCharCount(data, offset, length, flush: true);
-                var chars = new char[charCount];
-                decoder.GetChars(data, offset, length, chars, 0, flush: true);
-                return new string(chars);
-            }
-            catch (DecoderFallbackException)
-            {
-                return null;
-            }
-        }
-
-     
-        private static string? SanitizeNickname(string? nickname)
-        {
-            if (string.IsNullOrWhiteSpace(nickname))
-                return null;
-
-            // Обрезаем по null-терминатору
-            int nullIdx = nickname.IndexOf('\0');
-            string trimmed = (nullIdx >= 0 ? nickname[..nullIdx] : nickname).Trim();
-
-            if (trimmed.Length == 0)
-                return null;
-
-            var sb = new StringBuilder(trimmed.Length);
-            bool onlyDigits = true;
-            bool hasHan = false;
-
-            foreach (char ch in trimmed)
-            {
-                if (!char.IsLetterOrDigit(ch))
-                {
-                    if (sb.Length == 0) return null;   
-                    break;                              
-                }
-
-                if (ch == '\uFFFD')                     // Unicode replacement character
-                {
-                    if (sb.Length == 0) return null;
+                if (currentByte == 0)
                     break;
-                }
 
-                if (char.IsControl(ch))
+                if (currentByte < 32)
                 {
-                    if (sb.Length == 0) return null;
-                    break;
+                    // Back-reference: repeat previously written bytes
+                    int repeatCount = Math.Min(currentByte, writePos);
+                    for (int j = 0; j < repeatCount; j++)
+                    {
+                        if (writePos >= outputBuffer.Length)
+                            break;
+                        outputBuffer[writePos++] = outputBuffer[j];
+                    }
                 }
-
-                sb.Append(ch);
-
-                if (char.IsLetter(ch))
-                    onlyDigits = false;
-
-         
-                if (ch >= 0x4E00 && ch <= 0x9FFF ||     // CJK Unified Ideographs
-                    ch >= 0x3400 && ch <= 0x4DBF ||     // CJK Extension A
-                    ch >= 0xF900 && ch <= 0xFAFF)       // CJK Compatibility Ideographs
+                else if (writePos < outputBuffer.Length)
                 {
-                    hasHan = true;
+                    outputBuffer[writePos++] = currentByte;
                 }
             }
 
-            string result = sb.ToString();
+            string rawString = Encoding.UTF8.GetString(outputBuffer, 0, writePos);
+            var cleanName = new StringBuilder(rawString.Length);
 
-            if (result.Length == 0)
-                return null;
+            foreach (char c in rawString)
+            {
+                if (char.IsLetterOrDigit(c) || (c >= '가' && c <= '힣'))
+                    cleanName.Append(c);
+            }
 
-          
-            if (result.Length < 3 && !hasHan)
-                return null;
+            return cleanName.ToString();
+        }
 
-      
-            if (onlyDigits)
-                return null;
+        public bool IsAllDigits(string value)
+        {
+            for (int i = 0; i < value.Length; i++)
+            {
+                if (!char.IsDigit(value[i]))
+                    return false;
+            }
+            return true;
+        }
 
-        
-            if (result.Length == 1 && char.IsAsciiLetter(result[0]))
-                return null;
+        private string BuildDisplayName(string playerName, int serverId)
+        {
+            if (serverId <= 0)
+                return playerName;
 
-            return result;
+            string serverName = ServerMap.GetName(serverId);
+            return !string.IsNullOrEmpty(serverName)
+                ? $"{playerName}[{serverName}]"
+                : playerName;
         }
     }
 }
