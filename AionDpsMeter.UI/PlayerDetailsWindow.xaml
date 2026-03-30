@@ -146,12 +146,12 @@
                     </StackPanel>
                     <!-- Right: Log toggle + Close -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <Button Width="40" Height="22" FontSize="10"
-                                Command="{Binding ToggleCombatLogCommand}"
-                                Style="{StaticResource ModernButtonStyle}"
-                                Background="{StaticResource TertiaryBackgroundBrush}"
-                                Margin="0,0,6,0">
-                            <TextBlock FontSize="10">
+                        <Button  Width="40" Height="22" FontSize="11"
+                                 Command="{Binding ToggleCombatLogCommand}"
+                                 Style="{StaticResource ModernButtonStyle}"
+                                 Background="{StaticResource TertiaryBackgroundBrush}"
+                                 Margin="0,0,6,0" Padding="0">
+                            <TextBlock FontSize="10"   Padding="0">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Text" Value="Log"/>
@@ -164,10 +164,15 @@
                                 </TextBlock.Style>
                             </TextBlock>
                         </Button>
-                        <Button Content="?" Width="22" Height="22" FontSize="10"
+                        <Button 
+                                Content="✕"
+                                Width="22"
+                                Height="22"
+                                FontSize="10"
                                 Click="CloseButton_Click"
                                 Style="{StaticResource ModernButtonStyle}"
-                                Background="#C42B1C"/>
+                                Background="#C42B1C"
+                                Padding="0"/>
                     </StackPanel>
                 </Grid>
             </Border>
