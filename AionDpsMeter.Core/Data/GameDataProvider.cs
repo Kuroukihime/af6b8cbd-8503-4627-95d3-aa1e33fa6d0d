@@ -1,6 +1,7 @@
 using AionDpsMeter.Core.Models;
 using System.Collections.Frozen;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace AionDpsMeter.Core.Data
 {
@@ -9,9 +10,9 @@ namespace AionDpsMeter.Core.Data
         private static GameDataProvider? _instance;
         private static readonly object _lock = new();
 
-        private readonly Dictionary<int, Skill> _skillsById = [];
+        // Key = first 4 digits of skill id (the "skill prefix")
+        private readonly Dictionary<int, Skill> _skillsByPrefix = [];
         private readonly Dictionary<int, CharacterClass> _classesById = [];
-        private readonly int[] _sortedSkillIds = [];
         private int[] _skillCodeOffsets = [];
         private FrozenDictionary<int, MobData> _mobsById = FrozenDictionary<int, MobData>.Empty;
 
@@ -33,7 +34,6 @@ namespace AionDpsMeter.Core.Data
         private GameDataProvider()
         {
             LoadData();
-            _sortedSkillIds = [.. _skillsById.Keys.OrderBy(k => k)];
         }
 
         private void LoadData()
@@ -48,9 +48,7 @@ namespace AionDpsMeter.Core.Data
         private void LoadClasses(string path)
         {
             if (!File.Exists(path))
-            {
                 throw new FileNotFoundException($"Classes data file not found: {path}");
-            }
 
             var json = File.ReadAllText(path);
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
@@ -71,29 +69,36 @@ namespace AionDpsMeter.Core.Data
         private void LoadSkills(string path)
         {
             if (!File.Exists(path))
-            {
                 throw new FileNotFoundException($"Skills data file not found: {path}");
-            }
 
             var json = File.ReadAllText(path);
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var skillsFile = JsonSerializer.Deserialize<SkillsFile>(json, options)
-                ?? throw new InvalidDataException("Failed to deserialize skills.json");
+            var file = JsonSerializer.Deserialize<SkillsData>(json, options)
+                ?? throw new InvalidDataException("Failed to deserialize SkillsNew.json");
 
-            foreach (var skillData in skillsFile.Skills)
+            _skillCodeOffsets = file.SkillCodeOffsets ?? [];
+
+            foreach (var (idStr, name) in file.Skills)
             {
-                _skillsById[skillData.Id] = new Skill
+                if (!int.TryParse(idStr, out var fullId))
+                    continue;
+
+                var prefix = GetSkillPrefix(fullId);
+
+                // Only keep the first occurrence per prefix to avoid duplicates
+                if (_skillsByPrefix.ContainsKey(prefix))
+                    continue;
+
+                var classId = fullId / 1_000_000;
+
+                _skillsByPrefix[prefix] = new Skill
                 {
-                    Id = skillData.Id,
-                    Name = skillData.Name,
-                    Icon = SkillIconResolver.GetIconUrl(skillData.Id),
-                    ClassId = skillData.ClassId,
-                    GroupId = skillData.GroupId,
-                    IsEntity = skillData.IsEntity
+                    Id = prefix,
+                    ClassId = classId,
+                    Name = name,
+                    Icon = SkillIconResolver.GetIconUrl(fullId)
                 };
             }
-
-            _skillCodeOffsets = [.. skillsFile.SkillCodeOffsets];
         }
 
         private void LoadMobs(string path)
@@ -108,32 +113,44 @@ namespace AionDpsMeter.Core.Data
                 _mobsById = raw.ToFrozenDictionary();
         }
 
+     
+        private static int GetSkillPrefix(int skillId)
+        {
+            // Normalize: we want the leading 4 decimal digits
+            var s = skillId.ToString();
+            if (s.Length <= 4)
+                return skillId;
+            return int.Parse(s[..4]);
+        }
+
+        private int ResolvePrefix(int skillCode)
+        {
+            foreach (var offset in _skillCodeOffsets)
+            {
+                var candidate = skillCode - offset;
+                var prefix = GetSkillPrefix(candidate);
+                if (_skillsByPrefix.ContainsKey(prefix))
+                    return prefix;
+            }
+            return GetSkillPrefix(skillCode);
+        }
+
         public Skill? GetSkillById(int skillCode)
         {
-            var originalCode = InferOriginalSkillCode(skillCode);
-            var sk = _skillsById.GetValueOrDefault(originalCode);
-            if (sk == null) return null;
-            if (sk.GroupId != 0) return _skillsById.GetValueOrDefault((int)sk.GroupId);
-            return sk;
+            var prefix = ResolvePrefix(skillCode);
+            return _skillsByPrefix.GetValueOrDefault(prefix);
         }
 
         public Skill GetSkillOrDefault(int skillCode)
         {
-            var originalCode = InferOriginalSkillCode(skillCode);
-            if (_skillsById.TryGetValue(originalCode, out var skill))
-            {
-                if (skill.GroupId != 0)
-                {
-                    var baseSkill = _skillsById.GetValueOrDefault((int)skill.GroupId);
-                    if (baseSkill != null) return baseSkill;
-                }
+            var prefix = ResolvePrefix(skillCode);
+            if (_skillsByPrefix.TryGetValue(prefix, out var skill))
                 return skill;
-            }
 
             return new Skill
             {
-                Id = originalCode,
-                Name = $"Unknown Skill ({originalCode})",
+                Id = prefix,
+                Name = $"Unknown Skill ({skillCode})",
                 Icon = null
             };
         }
@@ -145,22 +162,21 @@ namespace AionDpsMeter.Core.Data
 
         public CharacterClass? GetClassBySkillCode(int skillCode)
         {
-            var originalCode = InferOriginalSkillCode(skillCode);
-            var classId = originalCode / 1000000;
+            // class id = first 2 digits of the full skill code
+            var s = skillCode.ToString();
+            if (s.Length < 2)
+                return null;
 
-            if (_classesById.TryGetValue(classId, out var charClass))
-            {
-                return charClass;
-            }
-            return null;
+            if (!int.TryParse(s[..2], out var classId))
+                return null;
+
+            return _classesById.TryGetValue(classId, out var charClass) ? charClass : null;
         }
 
         public CharacterClass GetClassOrDefault(int classId)
         {
             if (_classesById.TryGetValue(classId, out var charClass))
-            {
                 return charClass;
-            }
 
             return new CharacterClass
             {
@@ -170,22 +186,12 @@ namespace AionDpsMeter.Core.Data
             };
         }
 
-        private int InferOriginalSkillCode(int skillCode)
-        {
-            foreach (var offset in _skillCodeOffsets)
-            {
-                var possibleOrigin = skillCode - offset;
-                if (Array.BinarySearch(_sortedSkillIds, possibleOrigin) >= 0)
-                {
-                    return possibleOrigin;
-                }
-            }
-            return skillCode;
-        }
-
-        public IEnumerable<Skill> GetAllSkills() => _skillsById.Values;
+        public IEnumerable<Skill> GetAllSkills() => _skillsByPrefix.Values;
         public IEnumerable<CharacterClass> GetAllClasses() => _classesById.Values;
         public string GetMobName(int mobId) => _mobsById.TryGetValue(mobId, out var mob) ? mob.Name : $"Unknown ({mobId})";
         public bool IsMobBoss(int mobId) => _mobsById.TryGetValue(mobId, out var mob) && mob.IsBoss;
     }
+
+    
+    
 }

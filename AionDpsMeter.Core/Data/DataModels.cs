@@ -1,20 +1,7 @@
+using System.Text.Json.Serialization;
+
 namespace AionDpsMeter.Core.Data
 {
-    public sealed class SkillData
-    {
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public int ClassId { get; set; }
-        public int GroupId { get; set; }
-        public bool IsEntity { get; set; }
-    }
-
-    public sealed class SkillsFile
-    {
-        public List<SkillData> Skills { get; set; } = [];
-        public int[] SkillCodeOffsets { get; set; } = [];
-    }
-
     public sealed class ClassData
     {
         public int Id { get; set; }
@@ -33,8 +20,12 @@ namespace AionDpsMeter.Core.Data
         public bool IsBoss { get; set; }
     }
 
-    public sealed class MobsFile
+    internal sealed class SkillsData
     {
-        public List<MobData> Mobs { get; set; } = [];
+        [JsonPropertyName("skillCodeOffsets")]
+        public int[]? SkillCodeOffsets { get; set; }
+
+        [JsonPropertyName("skills")]
+        public Dictionary<string, string> Skills { get; set; } = [];
     }
 }
