@@ -38,6 +38,52 @@ namespace AionDpsMeter.Services.PacketProcessors
             ProcessParsedDamage(parsed, "04-38-FULL");
         }
 
+
+        public void ProcessDotDamage(byte[] packet)
+        {
+          
+            logger.LogDebug($"0538: {BitConverter.ToString(packet)}");
+
+            var reader = new DotDamagePacketReader(packet);
+            if (!reader.ReadAndValidateHeader()) return;
+            if (!reader.ReadTargetId(out int targetId)) return;
+            if (!reader.ReadAndValidateEffectType(out int effectType)) return;
+            if (!reader.ReadActorId(out int actorId)) return;
+            if (!reader.ReadUnknownVarInt(out int unknownVarInt)) return;
+            if (!reader.ReadSkillCode(out int skillCode)) return;
+            if (!reader.ReadDamage(out long damage)) return;
+
+            
+            if(targetId == actorId) return;
+            if (!GameDataProvider.Instance.IsDotDamageSkill(skillCode)) return;
+
+            var characterClass = gameData.GetClassBySkillCode(skillCode);
+            if (characterClass == null)
+            {
+                logger.LogWarning($"Unknown class for skill code: {skillCode}");
+                return;
+            }
+
+            var skill = gameData.GetSkillOrDefault(skillCode);
+
+            var sourceEntity = entityTracker.GetOrCreatePlayerEntity(actorId, characterClass);
+            var targetEntity = entityTracker.GetOrCreateTargetEntity(targetId);
+
+
+            var playerDamage = new PlayerDamage
+            {
+                DateTime = DateTime.Now,
+                SourceEntity = sourceEntity,
+                TargetEntity = targetEntity,
+                Skill = skill,
+                CharacterClass = characterClass,
+                Damage = damage,
+            };
+
+            DamageReceived?.Invoke(this, playerDamage);
+        }
+
+
         private void ProcessParsedDamage(ParsedDamagePacket parsed, string packType)
         {
             var playerDamage = CreatePlayerDamage(parsed.Data);

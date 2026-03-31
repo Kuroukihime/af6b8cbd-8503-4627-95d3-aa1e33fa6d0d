@@ -88,6 +88,7 @@ namespace AionDpsMeter.Services.Services
                 nicknameProcessor.Process(packet.Data);
 
                 if (packet.Type == PacketTypeEnum.DAMAGE) damagePacketProcessor.Process04_38(packet.Data);
+                else if (packet.Type == PacketTypeEnum.DOT_DAMAGE) damagePacketProcessor.ProcessDotDamage(packet.Data);
                 else if (packet.Type == PacketTypeEnum.CURRENT_TIME) ProcessPing(packet);
                 else if (packet.Type == PacketTypeEnum.MOB_HP) mobPacketProcessor.ProcessMobHp(packet.Data);
                 else if (packet.Type == PacketTypeEnum.MOB_SUMMON) mobPacketProcessor.ProcessMobSpawn(packet.Data);

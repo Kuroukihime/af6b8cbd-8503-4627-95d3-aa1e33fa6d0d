@@ -32,9 +32,12 @@ namespace AionDpsMeter.Core.Data
 
             Classes.Load(Path.Combine(dataDir, "classes.json"));
             Skills.Load(Path.Combine(dataDir, "skills.json"));
+            Skills.LoadDotSkillIds(Path.Combine(dataDir, "dot_skill_ids.json"));
             Mobs.Load(Path.Combine(dataDir, "mobs.json"));
+
         }
 
+        public bool IsDotDamageSkill(int skillCode) => Skills.IsDotDamageSkill(skillCode);
 
         public Skill? GetSkillById(int skillCode) => Skills.GetById(skillCode);
 

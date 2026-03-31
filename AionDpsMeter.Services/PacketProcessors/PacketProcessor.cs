@@ -37,6 +37,7 @@ namespace AionDpsMeter.Services.PacketProcessors
             var lenValueLength = packet.ReadVarInt().Length;
             if (lenValueLength < 0 || packet.Length < lenValueLength + 2) return PacketTypeEnum.BROKEN;
             if (packet[lenValueLength] == 0x04 && packet[lenValueLength + 1] == 0x38) return PacketTypeEnum.DAMAGE;
+            if (packet[lenValueLength] == 0x05 && packet[lenValueLength + 1] == 0x38) return PacketTypeEnum.DOT_DAMAGE;
             if (packet[lenValueLength] == 0xFF && packet[lenValueLength + 1] == 0xFF) return PacketTypeEnum.COMPRESSED_STREAM;
             if (packet[lenValueLength] == 0x03 && packet[lenValueLength + 1] == 0x36) return PacketTypeEnum.CURRENT_TIME;
             if (packet[lenValueLength] == 0x00 && packet[lenValueLength + 1] == 0x8D) return PacketTypeEnum.MOB_HP;
