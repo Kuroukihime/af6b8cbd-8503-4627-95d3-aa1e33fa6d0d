@@ -83,7 +83,7 @@ namespace AionDpsMeter.Services.PacketProcessors
         {
             EffectTypeByte = data[offset];
             effectType = EffectTypeByte;
-            if (EffectTypeByte != 0x02) return false;
+            if ((EffectTypeByte & 0x02) == 0) return false;
             offset += 1;
             return HasRemainingBytes();
         }
