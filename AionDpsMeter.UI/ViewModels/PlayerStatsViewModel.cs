@@ -1,28 +1,52 @@
 ﻿using AionDpsMeter.Services.Models;
+using AionDpsMeter.Services.Services.Settings;
+using AionDpsMeter.UI.Utils;
 
 namespace AionDpsMeter.UI.ViewModels
 {
     public sealed class PlayerStatsViewModel : ViewModelBase
     {
         private readonly PlayerStats _stats;
+        private readonly IAppSettingsService _settingsService;
 
         // Smoothly-animated percentage for the progress bar
         private double _animatedPercentage;
         public double AnimatedPercentage => _animatedPercentage;
 
-        public PlayerStatsViewModel(PlayerStats stats)
+        public PlayerStatsViewModel(PlayerStats stats, IAppSettingsService settingsService)
         {
             _stats = stats;
+            _settingsService = settingsService;
             _animatedPercentage = stats.DamagePercentage;
+            _settingsService.SettingsChanged += OnSettingsChanged;
+        }
+
+        private void OnSettingsChanged(object? sender, EventArgs e)
+        {
+            OnPropertyChanged(nameof(PlayerNameDisplay));
         }
 
         public long    PlayerId          => _stats.PlayerId;
         public string  PlayerName        => _stats.PlayerName;
         public string  ServerName        => _stats.ServerName;
-        /// <summary>Nickname formatted as <c>Name[Server]</c> when server is known, otherwise just <c>Name</c>.</summary>
-        public string  PlayerNameDisplay => string.IsNullOrEmpty(_stats.ServerName)
-                                               ? _stats.PlayerName
-                                               : $"{_stats.PlayerName}[{_stats.ServerName}]";
+
+        /// <summary>
+        /// Nickname formatted as <c>Name[Server]</c> when server is known, otherwise just <c>Name</c>.
+        /// When nickname hiding is enabled the name part is obfuscated.
+        /// </summary>
+        public string PlayerNameDisplay
+        {
+            get
+            {
+                string name = _settingsService.IsNicknameHidden
+                    ? NicknameObfuscator.Mask(_stats.PlayerName)
+                    : _stats.PlayerName;
+                return string.IsNullOrEmpty(_stats.ServerName)
+                    ? name
+                    : $"{name}[{_stats.ServerName}]";
+            }
+        }
+
         public string? PlayerIcon        => _stats.PlayerIcon;
         public string  ClassName         => _stats.ClassName;
         public string? ClassIcon         => _stats.ClassIcon;

@@ -1,4 +1,5 @@
-﻿using AionDpsMeter.UI.ViewModels;
+﻿using AionDpsMeter.Services.Services.Settings;
+using AionDpsMeter.UI.ViewModels;
 using System.Windows;
 using System.Windows.Input;
 
@@ -7,13 +8,15 @@ namespace AionDpsMeter.UI
     public partial class MainWindow : Window
     {
         private readonly SettingsViewModel _settingsViewModel;
+        private readonly IAppSettingsService _settingsService;
         private SettingsWindow? _settingsWindow;
 
-        public MainWindow(MainViewModel viewModel, SettingsViewModel settingsViewModel)
+        public MainWindow(MainViewModel viewModel, SettingsViewModel settingsViewModel, IAppSettingsService settingsService)
         {
             InitializeComponent();
             DataContext = viewModel;
             _settingsViewModel = settingsViewModel;
+            _settingsService = settingsService;
         }
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -71,6 +74,7 @@ namespace AionDpsMeter.UI
                         player.ClassName,
                         player.PlayerIcon,
                         player.ClassIcon,
+                        _settingsService,
                         player.CombatPower,
                         player.ServerName),
                     Owner = this

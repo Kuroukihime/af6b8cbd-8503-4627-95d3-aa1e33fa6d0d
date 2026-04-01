@@ -1,6 +1,7 @@
 ﻿using AionDpsMeter.Core.Models;
 using AionDpsMeter.Services.Models;
 using AionDpsMeter.Services.Services.Session;
+using AionDpsMeter.Services.Services.Settings;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
@@ -12,6 +13,7 @@ namespace AionDpsMeter.UI.ViewModels
     {
         private readonly IPacketService _packetService;
         private readonly CombatSessionManager _sessionManager;
+        private readonly IAppSettingsService _settingsService;
         private readonly Dispatcher _dispatcher;
         private DispatcherTimer? _updateTimer;
 
@@ -29,10 +31,11 @@ namespace AionDpsMeter.UI.ViewModels
         /// <summary>Exposes the session manager for <c>PlayerDetailsWindow</c>.</summary>
         public CombatSessionManager SessionManager => _sessionManager;
 
-        public MainViewModel(IPacketService packetService, CombatSessionManager sessionManager)
+        public MainViewModel(IPacketService packetService, CombatSessionManager sessionManager, IAppSettingsService settingsService)
         {
             _packetService  = packetService;
             _sessionManager = sessionManager;
+            _settingsService = settingsService;
             _dispatcher     = Dispatcher.CurrentDispatcher;
 
             _packetService.DamageReceived    += OnPacketReceived;
@@ -108,7 +111,7 @@ namespace AionDpsMeter.UI.ViewModels
                 if (existing is not null)
                     existing.Update(stats);
                 else
-                    Players.Add(new PlayerStatsViewModel(stats));
+                    Players.Add(new PlayerStatsViewModel(stats, _settingsService));
             }
 
             var sorted = Players.Where(p => p.TotalDamage > 0)

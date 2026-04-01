@@ -1,5 +1,7 @@
 using AionDpsMeter.Core.Models;
 using AionDpsMeter.Services.Services.Session;
+using AionDpsMeter.Services.Services.Settings;
+using AionDpsMeter.UI.Utils;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
@@ -10,6 +12,7 @@ namespace AionDpsMeter.UI.ViewModels
     public sealed partial class PlayerDetailsViewModel : ViewModelBase, IDisposable
     {
         private readonly CombatSessionManager _sessionManager;
+        private readonly IAppSettingsService _settingsService;
         private readonly long _playerId;
         private readonly string? _playerIcon;
         private readonly string? _classIcon;
@@ -50,9 +53,18 @@ namespace AionDpsMeter.UI.ViewModels
         partial void OnShowCombatLogChanged(bool value) => OnPropertyChanged(nameof(ShowSkills));
 
         /// <summary>Nickname formatted as <c>Name[Server]</c> when server is known, otherwise just <c>Name</c>.</summary>
-        public string PlayerNameWithServer => string.IsNullOrEmpty(_serverName)
-            ? _playerNameDisplay
-            : $"{_playerNameDisplay}[{_serverName}]";
+        public string PlayerNameWithServer
+        {
+            get
+            {
+                string name = _settingsService.IsNicknameHidden
+                    ? NicknameObfuscator.Mask(_playerNameDisplay)
+                    : _playerNameDisplay;
+                return string.IsNullOrEmpty(_serverName)
+                    ? name
+                    : $"{name}[{_serverName}]";
+            }
+        }
 
         public bool HasPlayerIcon => !string.IsNullOrEmpty(_playerIcon);
         public bool HasClassIcon  => !string.IsNullOrEmpty(_classIcon);
@@ -64,10 +76,12 @@ namespace AionDpsMeter.UI.ViewModels
             string className,
             string? playerIcon,
             string? classIcon,
+            IAppSettingsService settingsService,
             int combatPower = 0,
             string serverName = "")
         {
             _sessionManager    = sessionManager;
+            _settingsService   = settingsService;
             _playerId          = playerId;
             _playerIcon        = playerIcon;
             _classIcon         = classIcon;
@@ -78,11 +92,18 @@ namespace AionDpsMeter.UI.ViewModels
             _combatPower       = combatPower;
             _serverName        = serverName;
 
+            _settingsService.SettingsChanged += OnSettingsChanged;
+
             _updateTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(66) };
             _updateTimer.Tick += OnUpdateTimerTick;
             _updateTimer.Start();
 
             RefreshData();
+        }
+
+        private void OnSettingsChanged(object? sender, EventArgs e)
+        {
+            OnPropertyChanged(nameof(PlayerNameWithServer));
         }
 
         [RelayCommand]
@@ -157,6 +178,10 @@ namespace AionDpsMeter.UI.ViewModels
                 CombatLog.Add(new CombatLogEntryViewModel(entry));
         }
 
-        public void Dispose() => _updateTimer.Stop();
+        public void Dispose()
+        {
+            _settingsService.SettingsChanged -= OnSettingsChanged;
+            _updateTimer.Stop();
+        }
     }
 }

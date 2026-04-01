@@ -35,6 +35,25 @@ namespace AionDpsMeter.Services.Services.Settings
             }
         }
 
+        public bool IsNicknameHidden
+        {
+            get
+            {
+                lock (_lock) return _data.IsNicknameHidden;
+            }
+            set
+            {
+                bool changed;
+                lock (_lock)
+                {
+                    changed = _data.IsNicknameHidden != value;
+                    _data.IsNicknameHidden = value;
+                    if (changed) Save();
+                }
+                if (changed) SettingsChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
         private AppSettingsData Load()
         {
             try
@@ -63,6 +82,9 @@ namespace AionDpsMeter.Services.Services.Settings
         {
             [JsonPropertyName("isPacketLoggingEnabled")]
             public bool IsPacketLoggingEnabled { get; set; }
+
+            [JsonPropertyName("isNicknameHidden")]
+            public bool IsNicknameHidden { get; set; }
         }
     }
 }
