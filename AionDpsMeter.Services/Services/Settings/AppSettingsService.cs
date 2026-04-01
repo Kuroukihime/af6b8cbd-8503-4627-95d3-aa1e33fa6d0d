@@ -18,19 +18,44 @@ namespace AionDpsMeter.Services.Services.Settings
 
         public bool IsPacketLoggingEnabled
         {
-            get
-            {
-                lock (_lock) return _data.IsPacketLoggingEnabled;
-            }
+            get { lock (_lock) return _data.IsPacketLoggingEnabled; }
             set
             {
                 bool changed;
-                lock (_lock)
-                {
-                    changed = _data.IsPacketLoggingEnabled != value;
-                    _data.IsPacketLoggingEnabled = value;
-                    if (changed) Save();
-                }
+                lock (_lock) { changed = _data.IsPacketLoggingEnabled != value; _data.IsPacketLoggingEnabled = value; if (changed) Save(); }
+                if (changed) SettingsChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public bool IsNcApiEnabled
+        {
+            get { lock (_lock) return _data.IsNcApiEnabled; }
+            set
+            {
+                bool changed;
+                lock (_lock) { changed = _data.IsNcApiEnabled != value; _data.IsNcApiEnabled = value; if (changed) Save(); }
+                if (changed) SettingsChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public bool ShowCombatPower
+        {
+            get { lock (_lock) return _data.ShowCombatPower; }
+            set
+            {
+                bool changed;
+                lock (_lock) { changed = _data.ShowCombatPower != value; _data.ShowCombatPower = value; if (changed) Save(); }
+                if (changed) SettingsChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public bool ShowCombatScore
+        {
+            get { lock (_lock) return _data.ShowCombatScore; }
+            set
+            {
+                bool changed;
+                lock (_lock) { changed = _data.ShowCombatScore != value; _data.ShowCombatScore = value; if (changed) Save(); }
                 if (changed) SettingsChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -63,6 +88,15 @@ namespace AionDpsMeter.Services.Services.Settings
         {
             [JsonPropertyName("isPacketLoggingEnabled")]
             public bool IsPacketLoggingEnabled { get; set; }
+
+            [JsonPropertyName("isNcApiEnabled")]
+            public bool IsNcApiEnabled { get; set; } = true;
+
+            [JsonPropertyName("showCombatPower")]
+            public bool ShowCombatPower { get; set; } = true;
+
+            [JsonPropertyName("showCombatScore")]
+            public bool ShowCombatScore { get; set; } = true;
         }
     }
 }

@@ -3,11 +3,12 @@
     public sealed class PlayerStats
     {
         public long PlayerId { get; init; }
-        public string PlayerName { get; init; } = string.Empty;
+        public string PlayerName { get; set; } = string.Empty;
         public string? PlayerIcon { get; set; }
         public string ClassName { get; set; } = string.Empty;
         public string? ClassIcon { get; set; }
         public int CombatPower { get; set; }
+        public int CombatScore { get; set; }
         public string ServerName { get; set; } = string.Empty;
         public long TotalDamage { get; set; }
         public int HitCount { get; set; }

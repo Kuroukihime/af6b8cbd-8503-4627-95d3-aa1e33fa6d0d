@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Settings"
         Width="300"
-        Height="160"
+        Height="270"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
@@ -85,34 +85,104 @@
             </Border>
 
             <!-- Settings content -->
-            <Border Grid.Row="1" Padding="12,12">
+            <Border Grid.Row="1" Padding="12,10">
                 <StackPanel VerticalAlignment="Top">
 
-                <!-- Raw Packet Logging row -->
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
+                    <!-- Raw Packet Logging -->
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="Raw Packet Logging"
+                                       FontSize="12"
+                                       Foreground="{StaticResource PrimaryTextBrush}"/>
+                            <TextBlock Text="Save packets to PacketLogs folder"
+                                       FontSize="10"
+                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <ToggleButton Grid.Column="1"
+                                      IsChecked="{Binding IsPacketLoggingEnabled, Mode=TwoWay}"
+                                      Style="{StaticResource ToggleSwitchStyle}"
+                                      VerticalAlignment="Center"
+                                      Margin="12,0,0,0"/>
+                    </Grid>
 
-                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                        <TextBlock Text="Raw Packet Logging"
-                                   FontSize="12"
-                                   Foreground="{StaticResource PrimaryTextBrush}"/>
-                        <TextBlock Text="Save packets to PacketLogs folder"
-                                   FontSize="10"
-                                   Foreground="{StaticResource SecondaryTextBrush}"
-                                   Margin="0,2,0,0"/>
+                    <!-- NC API Enrichment -->
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="NC API Enrichment"
+                                       FontSize="12"
+                                       Foreground="{StaticResource PrimaryTextBrush}"/>
+                            <TextBlock Text="Fetch character info from NC servers"
+                                       FontSize="10"
+                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <ToggleButton Grid.Column="1"
+                                      IsChecked="{Binding IsNcApiEnabled, Mode=TwoWay}"
+                                      Style="{StaticResource ToggleSwitchStyle}"
+                                      VerticalAlignment="Center"
+                                      Margin="12,0,0,0"/>
+                    </Grid>
+
+                    <!-- Sub-options: visible only when NC API is ON -->
+                    <StackPanel Margin="14,0,0,0">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsNcApiEnabled}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+
+                        <!-- Show Combat Power -->
+                        <Grid Margin="0,6,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       Text="Show Combat Power"
+                                       FontSize="11"
+                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       VerticalAlignment="Center"/>
+                            <ToggleButton Grid.Column="1"
+                                          IsChecked="{Binding ShowCombatPower, Mode=TwoWay}"
+                                          Style="{StaticResource ToggleSwitchStyle}"
+                                          VerticalAlignment="Center"
+                                          Margin="12,0,0,0"/>
+                        </Grid>
+
+                        <!-- Show Combat Score -->
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       Text="Show Combat Score"
+                                       FontSize="11"
+                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       VerticalAlignment="Center"/>
+                            <ToggleButton Grid.Column="1"
+                                          IsChecked="{Binding ShowCombatScore, Mode=TwoWay}"
+                                          Style="{StaticResource ToggleSwitchStyle}"
+                                          VerticalAlignment="Center"
+                                          Margin="12,0,0,0"/>
+                        </Grid>
+
                     </StackPanel>
-
-                    <ToggleButton Grid.Column="1"
-                                  IsChecked="{Binding IsPacketLoggingEnabled, Mode=TwoWay}"
-                                  Style="{StaticResource ToggleSwitchStyle}"
-                                  VerticalAlignment="Center"
-                                  Margin="12,0,0,0"/>
-                </Grid>
-
-            </StackPanel>
+                </StackPanel>
             </Border>
         </Grid>
     </Border>

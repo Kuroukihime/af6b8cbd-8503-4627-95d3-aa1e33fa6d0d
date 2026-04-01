@@ -15,7 +15,6 @@
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
 
     <Window.Resources>
-        <!-- Slim scrollbar -->
         <Style x:Key="SlimScrollBarStyle" TargetType="ScrollBar">
             <Setter Property="Width" Value="6"/>
             <Setter Property="Background" Value="Transparent"/>
@@ -40,7 +39,6 @@
             </Setter>
         </Style>
 
-        <!-- Column header text style -->
         <Style x:Key="ColHeader" TargetType="TextBlock">
             <Setter Property="FontSize" Value="10"/>
             <Setter Property="FontWeight" Value="Bold"/>
@@ -48,7 +46,6 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
 
-        <!-- Virtualized table list with alternating rows -->
         <Style x:Key="TableListBox" TargetType="ListBox">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -93,11 +90,13 @@
                                    Foreground="{StaticResource PrimaryTextBrush}"
                                    VerticalAlignment="Center" Margin="0,0,6,0"/>
                         <TextBlock Text="{Binding CombatPower, StringFormat=CP: {0}}"
-                                   FontSize="10"
-                                   Foreground="{StaticResource SecondaryTextBrush}"
-                                   VerticalAlignment="Center"
-                                   Margin="0,0,10,0"
+                                   FontSize="10" Foreground="{StaticResource SecondaryTextBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,6,0"
                                    Visibility="{Binding CombatPower, Converter={StaticResource IntToVisibilityConverter}}"/>
+                        <TextBlock Text="{Binding CombatScore, StringFormat=CS: {0}}"
+                                   FontSize="10" Foreground="{StaticResource SecondaryTextBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,10,0"
+                                   Visibility="{Binding CombatScore, Converter={StaticResource IntToVisibilityConverter}}"/>
                         <TextBlock FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0">
                             <Run Text="Total: " Foreground="{StaticResource SecondaryTextBrush}"/>
                             <Run Text="{Binding TotalDamageDisplay, Mode=OneWay}"
@@ -116,7 +115,7 @@
                         <TextBlock FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0">
                             <Run Text="Perf: " Foreground="{StaticResource SecondaryTextBrush}"/>
                             <Run Text="{Binding PerfectRateDisplay, Mode=OneWay}"
-                                 Foreground="{StaticResource PerfectColorBrush}" FontWeight="Bold"/>    
+                                 Foreground="{StaticResource PerfectColorBrush}" FontWeight="Bold"/>
                         </TextBlock>
                         <TextBlock FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0">
                             <Run Text="x2: " Foreground="{StaticResource SecondaryTextBrush}"/>
@@ -124,11 +123,10 @@
                                  Foreground="{StaticResource DoubleDamageColorBrush}" FontWeight="Bold"/>
                         </TextBlock>
                         <TextBlock FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0">
-                         <Run Text="Parry: " Foreground="{StaticResource SecondaryTextBrush}"/>
-                         <Run Text="{Binding ParryRateDisplay, Mode=OneWay}"
-                              Foreground="{StaticResource ParryColorBrush}" FontWeight="Bold"/>          
+                            <Run Text="Parry: " Foreground="{StaticResource SecondaryTextBrush}"/>
+                            <Run Text="{Binding ParryRateDisplay, Mode=OneWay}"
+                                 Foreground="{StaticResource ParryColorBrush}" FontWeight="Bold"/>
                         </TextBlock>
-
                         <TextBlock FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0">
                             <Run Text="Hits: " Foreground="{StaticResource SecondaryTextBrush}"/>
                             <Run Text="{Binding TotalHits, Mode=OneWay}"
@@ -150,14 +148,15 @@
                                  Foreground="{StaticResource AccentBrush}" FontWeight="Bold"/>
                         </TextBlock>
                     </StackPanel>
+
                     <!-- Right: Log toggle + Close -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <Button  Width="40" Height="22" FontSize="11"
-                                 Command="{Binding ToggleCombatLogCommand}"
-                                 Style="{StaticResource ModernButtonStyle}"
-                                 Background="{StaticResource TertiaryBackgroundBrush}"
-                                 Margin="0,0,6,0" Padding="0">
-                            <TextBlock FontSize="10"   Padding="0">
+                        <Button Width="40" Height="22" FontSize="11"
+                                Command="{Binding ToggleCombatLogCommand}"
+                                Style="{StaticResource ModernButtonStyle}"
+                                Background="{StaticResource TertiaryBackgroundBrush}"
+                                Margin="0,0,6,0" Padding="0">
+                            <TextBlock FontSize="10" Padding="0">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Text" Value="Log"/>
@@ -170,21 +169,17 @@
                                 </TextBlock.Style>
                             </TextBlock>
                         </Button>
-                        <Button 
-                                Content="✕"
-                                Width="22"
-                                Height="22"
-                                FontSize="10"
+                        <Button Content="✕" Width="22" Height="22" FontSize="10"
                                 Click="CloseButton_Click"
                                 Style="{StaticResource ModernButtonStyle}"
-                                Background="#C42B1C"
-                                Padding="0"/>
+                                Background="#C42B1C" Padding="0"/>
                     </StackPanel>
                 </Grid>
             </Border>
 
             <!-- CONTENT (Skills / Log) -->
             <Grid Grid.Row="1">
+
                 <!-- SKILLS VIEW -->
                 <Grid Visibility="{Binding ShowSkills, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <Grid.RowDefinitions>
@@ -210,7 +205,7 @@
                                 <ColumnDefinition Width="50"/>
                                 <ColumnDefinition Width="70"/>
                                 <ColumnDefinition Width="65"/>
-                                    <ColumnDefinition Width="65"/>
+                                <ColumnDefinition Width="65"/>
                                 <ColumnDefinition Width="1.3*"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0"  Style="{StaticResource ColHeader}"/>
@@ -449,6 +444,7 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
                 </Grid>
+
             </Grid>
         </Grid>
     </Border>

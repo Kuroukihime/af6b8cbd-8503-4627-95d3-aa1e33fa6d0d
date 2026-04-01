@@ -13,6 +13,7 @@ namespace AionDpsMeter.Services.PacketProcessors
     {
         private readonly EntityTracker entityTracker;
         private readonly ILogger<NicknamePacketProcessor> logger;
+        private readonly CharacterEnrichmentQueue enrichmentQueue;
 
         private const int NameScanWindow = 10;
         private const byte NameBlockMarker = 7;
@@ -21,9 +22,10 @@ namespace AionDpsMeter.Services.PacketProcessors
         private static readonly byte[] InfoTag1 = [0x33, 0x36];
         private static readonly byte[] InfoTag2 = [0x44, 0x36];
 
-        public NicknamePacketProcessor(EntityTracker entityTracker, ILogger<NicknamePacketProcessor> logger)
+        public NicknamePacketProcessor(EntityTracker entityTracker, CharacterEnrichmentQueue enrichmentQueue, ILogger<NicknamePacketProcessor> logger)
         {
             this.entityTracker = entityTracker;
+            this.enrichmentQueue = enrichmentQueue;
             this.logger = logger;
         }
 
@@ -37,7 +39,7 @@ namespace AionDpsMeter.Services.PacketProcessors
             var lenVarInt = packet.ReadVarInt().Length;
             if (packet[lenVarInt] == 0x02 && packet[lenVarInt + 1] == 0x97)
             {
-                ProcessPartyPacket(packet, lenVarInt);
+                //ProcessPartyPacket(packet, lenVarInt);
                 return;
             }
             TryExtractAndApplyPlayerInfo(packet, 0, packet.Length);
@@ -51,7 +53,7 @@ namespace AionDpsMeter.Services.PacketProcessors
             {
                 foreach (var partyMember in list)
                 {
-                    entityTracker.RegisterBasePlayerEntity(partyMember);
+                    enrichmentQueue.Enqueue(-1,partyMember.ServerId, partyMember.Name);
                 }
             }
         }
@@ -161,12 +163,12 @@ namespace AionDpsMeter.Services.PacketProcessors
 
             if (TryParseInfoTag1(data, endOffset, out PlayerInfoResult result))
             {
-                entityTracker.UpdatePlayerEntityName(result.EntityId, result.Name, ServerMap.GetName(result.ServerId));
+                enrichmentQueue.Enqueue(result.EntityId,result.ServerId, result.Name);
                 return;
             }
             if (!TryParseInfoTag2(data, endOffset, out PlayerInfoResult result2))
                 return;
-            entityTracker.UpdatePlayerEntityName(result2.EntityId, result2.Name, ServerMap.GetName(result2.ServerId));
+            enrichmentQueue.Enqueue(result2.EntityId, result2.ServerId, result2.Name);
         }
 
         private bool TryParseInfoTag1(byte[] data, int endOffset, out PlayerInfoResult result)

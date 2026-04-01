@@ -1,4 +1,6 @@
-using AionDpsMeter.Core.Models;
+﻿using AionDpsMeter.Core.Models;
+using System.Numerics;
+using System.Xml.Linq;
 
 namespace AionDpsMeter.Services.Services.Entity
 {
@@ -63,8 +65,11 @@ namespace AionDpsMeter.Services.Services.Entity
 
         public Player GetOrCreatePlayerEntity(int entityId, CharacterClass characterClass)
         {
+
             if (playerEntities.TryGetValue(entityId, out var entity))
             {
+              
+                entity.CharacterClass ??= characterClass;
                 return entity;
             }
 
@@ -80,91 +85,101 @@ namespace AionDpsMeter.Services.Services.Entity
             return entity;
         }
 
-        public void UpdatePlayerEntityName(int entityId, string name, string serverName = "")
+        //public void UpdatePlayerEntityName(int entityId, string name, string serverName = "")
+        //{
+        //    basePlayerEntities.TryGetValue(name, out var basePlayerEntity);
+
+        //    if (playerEntities.TryGetValue(entityId, out var existing))
+        //    {
+        //        existing.Name = name;
+        //        existing.CharactedLevel = basePlayerEntity?.CharactedLevel ?? existing.CharactedLevel;
+        //        existing.ServerName = basePlayerEntity?.ServerName ?? (serverName.Length > 0 ? serverName : existing.ServerName);
+        //        existing.CombatPower = basePlayerEntity?.CombatPower ?? existing.CombatPower;
+        //        existing.CombatScore = basePlayerEntity?.CombatScore ?? existing.CombatScore;
+        //        existing.ServerId = basePlayerEntity?.ServerId ?? existing.ServerId;
+        //    }
+        //    else
+        //    {
+        //        playerEntities[entityId] = new Player
+        //        {
+        //            Id = entityId,
+        //            Name = name,
+        //            Icon = null,
+        //            CharactedLevel = basePlayerEntity?.CharactedLevel ?? 0,
+        //            ServerName = basePlayerEntity?.ServerName ?? serverName,
+        //            CombatPower = basePlayerEntity?.CombatPower ?? 0,
+        //            CombatScore = basePlayerEntity?.CombatScore ?? 0,
+        //            ServerId = basePlayerEntity?.ServerId ?? 0
+        //        };
+        //    }
+        //}
+
+        //public void RegisterBasePlayerEntity(Player player)
+        //{
+        //    basePlayerEntities[player.Name] = player;
+        //}
+
+
+        public void EnrichPlayerEntity(Player player)
         {
-
-            basePlayerEntities.TryGetValue(name, out var basePlayerEntity);
-
-            if (playerEntities.TryGetValue(entityId, out var existing))
+            if (player.Id == 13690)
             {
-                playerEntities[entityId] = new Player
-                {
-                    Id = entityId,
-                    Name = name,
-                    Icon = existing.Icon,
-                    CharacterClass = existing.CharacterClass,
-                    CharactedLevel = basePlayerEntity?.CharactedLevel ?? 0,
-                    ServerName = basePlayerEntity?.ServerName ?? serverName,
-                    CombatPower = basePlayerEntity?.CombatPower ?? 0,
-                    ServerId = basePlayerEntity?.ServerId ?? 0
-                };
+                Console.WriteLine();
             }
-            else
+            //var existing = player.Id > 0 ? playerEntities.GetValueOrDefault(player.Id) : GetPlayerByName(player.Name);
+            var existing = playerEntities.GetValueOrDefault(player.Id);
+           
+            if (existing != null)
             {
-                playerEntities[entityId] = new Player
-                {
-                    Id = entityId,
-                    Name = name,
-                    Icon = null,
-                    CharactedLevel = basePlayerEntity?.CharactedLevel ?? 0,
-                    ServerName = basePlayerEntity?.ServerName ?? serverName,
-                    CombatPower = basePlayerEntity?.CombatPower ?? 0,
-                    ServerId = basePlayerEntity?.ServerId ?? 0
-                };
+                EnrichExistingPlayerEntity(player, existing);
             }
-        }
 
-        public void RegisterBasePlayerEntity(Player player)
-        {
-            basePlayerEntities[player.Name] = player;
-        }
-
-        public void UpdatePlayerEntity(Player player)
-        {
-            if (playerEntities.TryGetValue(player.Id, out var existing))
+            if (player.Id > 0)
             {
-                // Since Entity is immutable (init-only), we need to replace it
+                basePlayerEntities.TryGetValue(player.Name, out var basePlayerEntity);
+
+                var combatPower = player.CombatPower > 0 ? player.CombatPower : basePlayerEntity?.CombatPower ?? 0;
+                var combatScore = player.CombatScore > 0 ? player.CombatScore : basePlayerEntity?.CombatScore ?? 0;
+
                 playerEntities[player.Id] = new Player
                 {
                     Id = player.Id,
                     Name = player.Name,
-                    Icon = existing.Icon,
-                    CharacterClass = existing.CharacterClass,
-                    CharactedLevel = player.CharactedLevel,
-                    CombatPower = player.CombatPower,
-                    ServerId = player.ServerId,
-                    ServerName = player.ServerName
+                    Icon = null,
+                    CharactedLevel = basePlayerEntity?.CharactedLevel ?? 0,
+                    ServerName = basePlayerEntity?.ServerName ?? player.ServerName,
+                    CombatPower = combatPower,
+                    CombatScore = combatScore,
+                    ServerId = player.ServerId
                 };
             }
             else
             {
-                playerEntities[player.Id] = new Player
-                {
-                    Id = player.Id,
-                    Name = player.Name,
-                    Icon = null,
-                    CharacterClass = player.CharacterClass,
-                    CharactedLevel = player.CharactedLevel,
-                    CombatPower = player.CombatPower,
-                    ServerId = player.ServerId,
-                    ServerName = player.ServerName
-                };
+                basePlayerEntities[player.Name] = player;
             }
         }
+
+
+
+        private Player? GetPlayerByName(string name) => playerEntities.FirstOrDefault(r => r.Value.Name == name).Value;
+
+        private void EnrichExistingPlayerEntity(Player player, Player existing)
+        {
+            basePlayerEntities.TryGetValue(player.Name, out var basePlayerEntity);
+            var combatPower = existing.CombatPower > 0 ? existing.CombatPower : basePlayerEntity?.CombatPower ?? player.CombatPower;
+            existing.Name = player.Name;
+            existing.CharactedLevel = player.CharactedLevel;
+            existing.CombatPower = combatPower;
+            existing.CombatScore = player.CombatScore > 0 ? player.CombatScore : existing.CombatScore;
+            existing.ServerId = player.ServerId > 0 ? player.ServerId : existing.ServerId;
+            existing.ServerName = player.ServerName;
+        }
+
+
 
         public void RegisterSummon(int summonId, int ownerId)
         {
             summons[summonId] = ownerId;
-
-            //if (!entities.ContainsKey(summonId))
-            //{
-            //    entities[summonId] = new Entity
-            //    {
-            //        Id = summonId,
-            //        Name = $"Summon_{summonId}",
-            //        Icon = null
-            //    };
-            //}
         }
 
         public bool IsSummon(int entityId) => summons.ContainsKey(entityId);

@@ -24,6 +24,7 @@ namespace AionDpsMeter.UI.ViewModels
         [ObservableProperty] private string? _playerIconDisplay;
         [ObservableProperty] private string? _classIconDisplay;
         [ObservableProperty] private int _combatPower;
+        [ObservableProperty] private int _combatScore;
 
         // ?? Summary stats ??????????????????????????????????????????????????????
         [ObservableProperty] private string _totalDamageDisplay = "0";
@@ -65,6 +66,7 @@ namespace AionDpsMeter.UI.ViewModels
             string? playerIcon,
             string? classIcon,
             int combatPower = 0,
+            int combatScore = 0,
             string serverName = "")
         {
             _sessionManager    = sessionManager;
@@ -76,6 +78,7 @@ namespace AionDpsMeter.UI.ViewModels
             _playerIconDisplay = playerIcon;
             _classIconDisplay  = classIcon;
             _combatPower       = combatPower;
+            _combatScore       = combatScore;
             _serverName        = serverName;
 
             _updateTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(66) };
@@ -114,6 +117,8 @@ namespace AionDpsMeter.UI.ViewModels
                 CombatDurationDisplay     = DamageFormatter.FormatDuration(playerStats.CombatDuration);
                 if (playerStats.CombatPower > 0)
                     CombatPower = playerStats.CombatPower;
+                if (playerStats.CombatScore > 0)
+                    CombatScore = playerStats.CombatScore;
                 if (!string.IsNullOrEmpty(playerStats.ServerName))
                 {
                     ServerName = playerStats.ServerName;

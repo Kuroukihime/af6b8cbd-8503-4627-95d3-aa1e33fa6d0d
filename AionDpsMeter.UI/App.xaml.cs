@@ -1,8 +1,10 @@
-﻿using AionDpsMeter.Core.Models;
+﻿using AionDpsMeter.Core.Data;
+using AionDpsMeter.Core.Models;
 using AionDpsMeter.Services.Extensions;
 using AionDpsMeter.Services.Models;
 using AionDpsMeter.Services.PacketCapture;
 using AionDpsMeter.Services.Services;
+using AionDpsMeter.Services.Services.Entity;
 using AionDpsMeter.Services.Services.Entity;
 using AionDpsMeter.Services.Services.Session;
 using AionDpsMeter.Services.Services.Settings;
@@ -12,7 +14,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using System.Windows;
-using AionDpsMeter.Services.Services.Entity;
 
 namespace AionDpsMeter.UI
 {
@@ -36,13 +37,15 @@ namespace AionDpsMeter.UI
                 })
                 .ConfigureServices((context, services) =>
                 {
-                   
+                    services.AddMemoryCache();
+                    services.AddHttpClient<CharacterApiClient>();
+
                     services.AddSingleton<IAppSettingsService, AppSettingsService>();
                     services.AddSingleton<FilePacketWriter>();
                     services.AddSingleton<TcpStreamBuffer>();
 
-                    //services.AddSingleton<IPacketCaptureDevice, FilePacketCaptureDevice>();
-                    services.AddSingleton<IPacketCaptureDevice, LoopbackCaptureDevice>();
+                    services.AddSingleton<IPacketCaptureDevice, FilePacketCaptureDevice>();
+                    //services.AddSingleton<IPacketCaptureDevice, LoopbackCaptureDevice>();
 
                     services.AddSingleton<EntityTracker>();
                     services.AddSingleton<IPacketService, AionPacketService>();

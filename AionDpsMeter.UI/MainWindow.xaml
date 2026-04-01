@@ -259,10 +259,35 @@
                                                        FontWeight="SemiBold"
                                                        Foreground="{StaticResource PrimaryTextBrush}"
                                                        TextTrimming="CharacterEllipsis"/>
-                                            <TextBlock Text="{Binding CombatPower, StringFormat=CP: {0}}"
-                                                       FontSize="8"
-                                                       Foreground="{StaticResource SecondaryTextBrush}"
-                                                       Visibility="{Binding CombatPower, Converter={StaticResource IntToVisibilityConverter}}"/>
+                                            <!-- CP and CS inline on one row -->
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding CombatPower, StringFormat=CP: {0}}"
+                                                           FontSize="8"
+                                                           Foreground="{StaticResource SecondaryTextBrush}"
+                                                           Visibility="{Binding ShowCombatPower, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                                <TextBlock Text=" · "
+                                                           FontSize="8"
+                                                           Foreground="{StaticResource SecondaryTextBrush}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <MultiDataTrigger>
+                                                                    <MultiDataTrigger.Conditions>
+                                                                        <Condition Binding="{Binding ShowCombatPower}" Value="True"/>
+                                                                        <Condition Binding="{Binding ShowCombatScore}" Value="True"/>
+                                                                    </MultiDataTrigger.Conditions>
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </MultiDataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding CombatScore, StringFormat=CS: {0}}"
+                                                           FontSize="8"
+                                                           Foreground="{StaticResource SecondaryTextBrush}"
+                                                           Visibility="{Binding ShowCombatScore, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                            </StackPanel>
                                         </StackPanel>
 
                                         <TextBlock Text="{Binding TotalDamageFormatted}"

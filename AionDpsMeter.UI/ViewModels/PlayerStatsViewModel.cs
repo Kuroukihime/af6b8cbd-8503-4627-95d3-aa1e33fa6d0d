@@ -1,18 +1,21 @@
 ﻿using AionDpsMeter.Services.Models;
+using AionDpsMeter.Services.Services.Settings;
 
 namespace AionDpsMeter.UI.ViewModels
 {
     public sealed class PlayerStatsViewModel : ViewModelBase
     {
         private readonly PlayerStats _stats;
+        private readonly IAppSettingsService _settings;
 
         // Smoothly-animated percentage for the progress bar
         private double _animatedPercentage;
         public double AnimatedPercentage => _animatedPercentage;
 
-        public PlayerStatsViewModel(PlayerStats stats)
+        public PlayerStatsViewModel(PlayerStats stats, IAppSettingsService settings)
         {
-            _stats = stats;
+            _stats    = stats;
+            _settings = settings;
             _animatedPercentage = stats.DamagePercentage;
         }
 
@@ -27,8 +30,13 @@ namespace AionDpsMeter.UI.ViewModels
         public string  ClassName         => _stats.ClassName;
         public string? ClassIcon         => _stats.ClassIcon;
         public int     CombatPower       => _stats.CombatPower;
+        public int     CombatScore       => _stats.CombatScore;
+
         public bool    HasPlayerIcon     => !string.IsNullOrEmpty(_stats.PlayerIcon);
         public bool    HasClassIcon      => !string.IsNullOrEmpty(_stats.ClassIcon);
+
+        public bool ShowCombatPower => _settings.IsNcApiEnabled && _settings.ShowCombatPower && _stats.CombatPower > 0;
+        public bool ShowCombatScore => _settings.IsNcApiEnabled && _settings.ShowCombatScore && _stats.CombatScore > 0;
 
         public long   TotalDamage          => _stats.TotalDamage;
         public string TotalDamageFormatted => DamageFormatter.Format(_stats.TotalDamage);
@@ -71,6 +79,9 @@ namespace AionDpsMeter.UI.ViewModels
             OnPropertyChanged(nameof(HasPlayerIcon));
             OnPropertyChanged(nameof(HasClassIcon));
             OnPropertyChanged(nameof(CombatPower));
+            OnPropertyChanged(nameof(CombatScore));
+            OnPropertyChanged(nameof(ShowCombatPower));
+            OnPropertyChanged(nameof(ShowCombatScore));
             OnPropertyChanged(nameof(ServerName));
             OnPropertyChanged(nameof(PlayerNameDisplay));
         }

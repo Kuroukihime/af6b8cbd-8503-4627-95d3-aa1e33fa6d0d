@@ -1,9 +1,11 @@
-﻿using AionDpsMeter.Core.Models;
+﻿using AionDpsMeter.Core.Data;
+using AionDpsMeter.Core.Models;
 using AionDpsMeter.Services.PacketCapture;
 using AionDpsMeter.Services.PacketProcessors;
 using Microsoft.Extensions.Logging;
 using AionDpsMeter.Services.Models;
 using AionDpsMeter.Services.Services.Entity;
+using AionDpsMeter.Services.Services.Settings;
 
 namespace AionDpsMeter.Services.Services
 {
@@ -21,6 +23,7 @@ namespace AionDpsMeter.Services.Services
         private readonly DamagePacketProcessor damagePacketProcessor;
         private readonly ServerTimePacketProcessor serverTimePacketProcessor;
         private readonly MobPacketProcessor mobPacketProcessor;
+        private readonly CharacterEnrichmentWorker enrichmentWorker;
 
         public event EventHandler<PlayerDamage>? DamageReceived;
         private ILogger<AionPacketService> logger;
@@ -28,15 +31,29 @@ namespace AionDpsMeter.Services.Services
         public event EventHandler<int>? PingUpdated;
         public int CurrentPingMs { get; private set; }
 
-        public AionPacketService(IPacketCaptureDevice captureDevice, TcpStreamBuffer tcpStreamBuffer, EntityTracker entityTracker, ILoggerFactory loggerFactory)
+        public AionPacketService(
+            IPacketCaptureDevice captureDevice,
+            TcpStreamBuffer tcpStreamBuffer,
+            EntityTracker entityTracker,
+            CharacterApiClient characterApiClient,
+            IAppSettingsService appSettingsService,
+            ILoggerFactory loggerFactory)
         {
             this.captureDevice = captureDevice;
             logger = loggerFactory.CreateLogger<AionPacketService>();
             streamBuffer = tcpStreamBuffer;
             this.entityTracker = entityTracker;
 
+            var enrichmentQueue = new CharacterEnrichmentQueue();
+            enrichmentWorker = new CharacterEnrichmentWorker(
+                enrichmentQueue,
+                characterApiClient,
+                entityTracker,
+                appSettingsService,
+                loggerFactory.CreateLogger<CharacterEnrichmentWorker>());
+
             packetProcessor = new PacketProcessor(loggerFactory.CreateLogger<PacketProcessor>());
-            nicknameProcessor = new NicknamePacketProcessor(entityTracker, loggerFactory.CreateLogger<NicknamePacketProcessor>());
+            nicknameProcessor = new NicknamePacketProcessor(entityTracker, enrichmentQueue, loggerFactory.CreateLogger<NicknamePacketProcessor>());
             damagePacketProcessor = new DamagePacketProcessor(entityTracker, loggerFactory.CreateLogger<DamagePacketProcessor>());
             serverTimePacketProcessor = new();
             mobPacketProcessor = new MobPacketProcessor(entityTracker, loggerFactory.CreateLogger<MobPacketProcessor>());
@@ -49,17 +66,17 @@ namespace AionDpsMeter.Services.Services
         public void Start()
         {
             if (isRunning) return;
-
             isRunning = true;
+            enrichmentWorker.Start();
             captureDevice.StartCapture();
         }
 
         public void Stop()
         {
             if (!isRunning) return;
-
             isRunning = false;
             captureDevice.StopCapture();
+            enrichmentWorker.Stop();
         }
 
         public void Reset()
@@ -116,11 +133,10 @@ namespace AionDpsMeter.Services.Services
         public void Dispose()
         {
             if (disposed) return;
-
             Stop();
             streamBuffer.PacketExtracted -= OnPacketExtracted;
             captureDevice.Dispose();
-
+            enrichmentWorker.Dispose();
             disposed = true;
         }
     }

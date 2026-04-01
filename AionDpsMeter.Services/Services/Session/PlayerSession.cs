@@ -11,12 +11,13 @@ namespace AionDpsMeter.Services.Services.Session
     public sealed class PlayerSession
     {
         public long PlayerId { get; }
-        public string PlayerName { get; }
+        public string PlayerName { get; private set; }
         public string? PlayerIcon { get; }
         public long ClassId { get; }
         public string ClassName { get; }
         public string? ClassIcon { get; }
         public int CombatPower { get; private set; }
+        public int CombatScore { get; private set; }
         public string ServerName { get; private set; } = string.Empty;
 
         private readonly List<PlayerDamage> damageHistory = new();
@@ -32,6 +33,7 @@ namespace AionDpsMeter.Services.Services.Session
             ClassName = firstDamage.CharacterClass.Name;
             ClassIcon = firstDamage.CharacterClass.Icon;
             CombatPower = firstDamage.SourceEntity.CombatPower;
+            CombatScore = firstDamage.SourceEntity.CombatScore;
             ServerName = firstDamage.SourceEntity.ServerName;
             Stats = CreateEmptyStats(firstDamage.DateTime);
         }
@@ -39,8 +41,13 @@ namespace AionDpsMeter.Services.Services.Session
         public void AddDamage(PlayerDamage damage)
         {
             damageHistory.Add(damage);
+
+            if (!string.IsNullOrEmpty(damage.SourceEntity.Name))
+                PlayerName = damage.SourceEntity.Name;
             if (damage.SourceEntity.CombatPower > 0)
                 CombatPower = damage.SourceEntity.CombatPower;
+            if (damage.SourceEntity.CombatScore > 0)
+                CombatScore = damage.SourceEntity.CombatScore;
             if (!string.IsNullOrEmpty(damage.SourceEntity.ServerName))
                 ServerName = damage.SourceEntity.ServerName;
         }
@@ -70,7 +77,9 @@ namespace AionDpsMeter.Services.Services.Session
         public void UpdateStats(int activeTargetId, long totalCombatDamage)
         {
             Stats.CombatPower = CombatPower;
+            Stats.CombatScore = CombatScore;
             Stats.ServerName = ServerName;
+            Stats.PlayerName = PlayerName;
             DamageStatisticsCalculator.UpdatePlayerStats(Stats, damageHistory, activeTargetId, totalCombatDamage);
         }
 
@@ -110,6 +119,7 @@ namespace AionDpsMeter.Services.Services.Session
                 ClassName = ClassName,
                 ClassIcon = ClassIcon,
                 CombatPower = CombatPower,
+                CombatScore = CombatScore,
                 ServerName = ServerName,
                 FirstHit = initialTime ?? default,
                 LastHit = initialTime ?? default
