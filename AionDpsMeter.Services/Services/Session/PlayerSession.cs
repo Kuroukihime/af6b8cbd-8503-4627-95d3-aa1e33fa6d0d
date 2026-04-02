@@ -1,122 +1,65 @@
 ﻿using AionDpsMeter.Core.Models;
-using AionDpsMeter.Services.Models;
+using System.Numerics;
+using AionDpsMeter.Services.Services.Entity;
 
 namespace AionDpsMeter.Services.Services.Session
 {
-    /// <summary>
-    /// Stores the damage history for a single player within a combat session.
-    /// Provides queries filtered by active target and delegates stat computation
-    /// to <see cref="DamageStatisticsCalculator"/>.
-    /// </summary>
     public sealed class PlayerSession
     {
-        public long PlayerId { get; }
-        public string PlayerName { get; }
-        public string? PlayerIcon { get; }
-        public long ClassId { get; }
-        public string ClassName { get; }
-        public string? ClassIcon { get; }
-        public int CombatPower { get; private set; }
-        public string ServerName { get; private set; } = string.Empty;
-        public bool IsUser { get; }
+        private readonly List<PlayerDamage> hits = new();
 
-        private readonly List<PlayerDamage> damageHistory = new();
+        public int PlayerId { get; }
+        public string PlayerName => entityTaTracker.GetPlayerEntity(PlayerId)?.Name ?? $"Unknown player {PlayerId}";
+        public string? PlayerIcon => entityTaTracker.GetPlayerEntity(PlayerId)?.Icon;
+        public string ClassName => entityTaTracker.GetPlayerEntity(PlayerId)?.CharacterClass?.Name ?? "";
+        public string? ClassIcon => entityTaTracker.GetPlayerEntity(PlayerId)?.CharacterClass?.Icon;
+        public bool IsUser => entityTaTracker.GetPlayerEntity(PlayerId)?.IsUser ?? false;
+        public int CombatPower => entityTaTracker.GetPlayerEntity(PlayerId)?.CombatPower ?? 0;
+        public string ServerName => entityTaTracker.GetPlayerEntity(PlayerId)?.ServerName ?? "";
 
-        public PlayerStats Stats { get; private set; }
+        public long TotalDamage { get; private set; }
+        public int HitCount { get; private set; }
+        public DateTime? FirstHit { get; private set; }
+        public DateTime? LastHit { get; private set; }
 
-        public PlayerSession(PlayerDamage firstDamage)
+        public IReadOnlyList<PlayerDamage> Hits => hits;
+
+        private readonly EntityTracker entityTaTracker;
+
+        public PlayerSession(int playerId, EntityTracker entityTaTracker)
         {
-            PlayerId = firstDamage.SourceEntity.Id;
-            PlayerName = firstDamage.SourceEntity.Name;
-            PlayerIcon = firstDamage.SourceEntity.Icon;
-            ClassId = firstDamage.CharacterClass.Id;
-            ClassName = firstDamage.CharacterClass.Name;
-            ClassIcon = firstDamage.CharacterClass.Icon;
-            CombatPower = firstDamage.SourceEntity.CombatPower;
-            ServerName = firstDamage.SourceEntity.ServerName;
-            IsUser = firstDamage.SourceEntity.IsUser;
-            Stats = CreateEmptyStats(firstDamage.DateTime);
+            PlayerId = playerId;
+            this.entityTaTracker = entityTaTracker;
         }
 
         public void AddDamage(PlayerDamage damage)
         {
-            damageHistory.Add(damage);
-            if (damage.SourceEntity.CombatPower > 0)
-                CombatPower = damage.SourceEntity.CombatPower;
-            if (!string.IsNullOrEmpty(damage.SourceEntity.ServerName))
-                ServerName = damage.SourceEntity.ServerName;
+            hits.Add(damage);
+            TotalDamage += damage.Damage;
+            if (!damage.IsDot) HitCount++;
+
+            if (FirstHit is null || damage.DateTime < FirstHit) FirstHit = damage.DateTime;
+            if (LastHit is null || damage.DateTime > LastHit) LastHit = damage.DateTime;
         }
 
-        /// <summary>
-        /// Counts how many hits each target received after <paramref name="cutoff"/>.
-        /// Used by <see cref="ActiveTargetResolver"/> to determine the active target.
-        /// </summary>
-        public void CountRecentTargetHits(DateTime cutoff, Dictionary<int, int> targetCounts)
+        public int CountHitsAfter(DateTime cutoff)
         {
-            for (int i = damageHistory.Count - 1; i >= 0; i--)
+            int count = 0;
+            for (int i = hits.Count - 1; i >= 0; i--)
             {
-                var damage = damageHistory[i];
-                if (damage.DateTime < cutoff) break;
-
-                var targetId = damage.TargetEntity.Id;
-                targetCounts.TryGetValue(targetId, out var count);
-                targetCounts[targetId] = count + 1;
+                if (hits[i].DateTime < cutoff) break;
+                count++;
             }
-        }
-
-        /// <summary>
-        /// Recalculates this player's stats against the given target.
-        /// Called in two passes: first with totalCombatDamage=0 to compute per-player totals,
-        /// then with the real total to compute damage percentage.
-        /// </summary>
-        public void UpdateStats(int activeTargetId, long totalCombatDamage)
-        {
-            Stats.CombatPower = CombatPower;
-            Stats.ServerName = ServerName;
-            DamageStatisticsCalculator.UpdatePlayerStats(Stats, damageHistory, activeTargetId, totalCombatDamage);
-        }
-
-        public IReadOnlyList<PlayerDamage> GetDamageHistory(int activeTargetId)
-        {
-            var result = new List<PlayerDamage>();
-            foreach (var damage in damageHistory)
-            {
-                if (damage.TargetEntity.Id == activeTargetId)
-                    result.Add(damage);
-            }
-            return result;
-        }
-
-        public IReadOnlyCollection<SkillStats> GetSkillStats(int activeTargetId)
-        {
-            return DamageStatisticsCalculator.CalculateSkillStats(
-                damageHistory,
-                activeTargetId,
-                Stats.CombatDuration,
-                Stats.TotalDamage);
+            return count;
         }
 
         public void Reset()
         {
-            damageHistory.Clear();
-            Stats = CreateEmptyStats();
-        }
-
-        private PlayerStats CreateEmptyStats(DateTime? initialTime = null)
-        {
-            return new PlayerStats
-            {
-                PlayerId = PlayerId,
-                PlayerName = PlayerName,
-                PlayerIcon = PlayerIcon,
-                ClassName = ClassName,
-                ClassIcon = ClassIcon,
-                CombatPower = CombatPower,
-                ServerName = ServerName,
-                IsUser = IsUser,
-                FirstHit = initialTime ?? default,
-                LastHit = initialTime ?? default
-            };
+            hits.Clear();
+            TotalDamage = 0;
+            HitCount = 0;
+            FirstHit = null;
+            LastHit = null;
         }
     }
 }

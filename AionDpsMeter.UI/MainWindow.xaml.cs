@@ -11,6 +11,7 @@ namespace AionDpsMeter.UI
         private readonly SettingsViewModel settingsViewModel;
         private readonly IAppSettingsService settingsService;
         private SettingsWindow? settingsWindow;
+        private HistoryWindow? historyWindow;
 
         public MainWindow(MainViewModel viewModel, SettingsViewModel settingsViewModel, IAppSettingsService settingsService)
         {
@@ -106,6 +107,29 @@ namespace AionDpsMeter.UI
         private void MinimizeButton_Click(object sender, RoutedEventArgs e)
         {
             WindowState = WindowState.Minimized;
+        }
+
+        private void HistoryButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is not MainViewModel viewModel) return;
+
+            // Singleton: bring existing window to front instead of opening a new one
+            if (historyWindow is { IsVisible: true })
+            {
+                historyWindow.Activate();
+                return;
+            }
+
+            var snapshot = viewModel.SessionManager.GetHistorySnapshot();
+
+            historyWindow = new HistoryWindow(settingsService)
+            {
+                DataContext = new AionDpsMeter.UI.ViewModels.History.HistoryViewModel(snapshot),
+                Owner = this
+            };
+
+            PositionWindowToRight(historyWindow);
+            historyWindow.Show();
         }
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e)

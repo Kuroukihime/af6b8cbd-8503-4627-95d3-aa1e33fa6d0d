@@ -10,7 +10,7 @@ namespace AionDpsMeter.Core.Data
         private readonly Dictionary<int, Skill> skillsByPrefix = [];
         private int[] skillCodeOffsets = [];
         private HashSet<int> dotSkillIds = new();
-
+        private HashSet<int> healingSkillIds = new();
 
         public void Load(string path)
         {
@@ -58,6 +58,28 @@ namespace AionDpsMeter.Core.Data
             dotSkillIds = new HashSet<int>(ids);
           
         }
+
+        public void LoadHealingSkills(string path)
+        {
+            if (!File.Exists(path))
+                throw new FileNotFoundException($"Skills data file not found: {path}");
+
+            var json = File.ReadAllText(path);
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var ids = JsonSerializer.Deserialize<int[]>(json, options) ?? throw new InvalidDataException("Failed to deserialize dot_skill_ids.json");
+            
+            foreach (var id in ids)
+            {
+                var prefix = NormalizeSkillCode(id);
+                healingSkillIds.Add(prefix);
+            }
+        }
+        public bool IsHealingSkill(int skillId)
+        {
+            var prefix = NormalizeSkillCode(skillId);
+            return healingSkillIds.Contains(prefix);
+        }
+
         public bool IsDotDamageSkill(int skillId)
         {
             return dotSkillIds.Contains(skillId);
@@ -68,11 +90,6 @@ namespace AionDpsMeter.Core.Data
 
         public string? GetName(int skillCode) => skillsByPrefix.TryGetValue(skillCode, out var s) ? s.Name : null;
 
-        public Skill? GetById(int skillCode)
-        {
-            var prefix = ResolvePrefix(skillCode);
-            return skillsByPrefix.GetValueOrDefault(prefix);
-        }
 
         public Skill GetOrDefault(int skillCode)
         {
@@ -179,17 +196,6 @@ namespace AionDpsMeter.Core.Data
         }
 
 
-        private int ResolvePrefix(int skillCode)
-        {
-            foreach (var offset in skillCodeOffsets)
-            {
-                var candidate = skillCode - offset;
-                var prefix = GetSkillPrefix(candidate);
-                if (skillsByPrefix.ContainsKey(prefix))
-                    return prefix;
-            }
-            return GetSkillPrefix(skillCode);
-        }
 
         private int NormalizeToBaseSkill(int code)
         {
@@ -210,12 +216,5 @@ namespace AionDpsMeter.Core.Data
             return code;
         }
 
-        private static int GetSkillPrefix(int skillId)
-        {
-            var s = skillId.ToString();
-            if (s.Length <= 4)
-                return skillId;
-            return int.Parse(s[..4]);
-        }
     }
 }

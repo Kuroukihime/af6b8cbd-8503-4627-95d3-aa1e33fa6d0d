@@ -8,6 +8,6 @@
         public int ServerId { get; init; }
         public string ServerName { get; init; } = "";
         public bool IsUser { get; init; }
-        public CharacterClass? CharacterClass { get; init; }
+        public CharacterClass? CharacterClass { get; set; }
     }
 }

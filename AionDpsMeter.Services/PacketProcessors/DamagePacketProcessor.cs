@@ -55,15 +55,14 @@ namespace AionDpsMeter.Services.PacketProcessors
 
             
             if(targetId == actorId) return;
-            if (!GameDataProvider.Instance.IsDotDamageSkill(skillCode)) return;
-
+            if (!gameData.IsDotDamageSkill(skillCode)) return;
+            if (gameData.IsHealingSkill(skillCode)) return;
             var characterClass = gameData.GetClassBySkillCode(skillCode);
             if (characterClass == null)
             {
                 logger.LogWarning($"Unknown class for skill code: {skillCode}");
                 return;
             }
-
             var skill = gameData.GetSkillOrDefault(skillCode);
 
             var sourceEntity = entityTracker.GetOrCreatePlayerEntity(actorId, characterClass);
@@ -100,6 +99,7 @@ namespace AionDpsMeter.Services.PacketProcessors
 
         private PlayerDamage? CreatePlayerDamage(DamagePacketData damageData)
         {
+            if (gameData.IsHealingSkill(damageData.SkillCode)) return null;
             var characterClass = gameData.GetClassBySkillCode(damageData.SkillCode);
             if (characterClass == null)
             {
@@ -108,7 +108,7 @@ namespace AionDpsMeter.Services.PacketProcessors
             }
 
             var skill = gameData.GetSkillOrDefault(damageData.SkillCode);
-
+            
             var sourceEntity = entityTracker.GetOrCreatePlayerEntity(damageData.ActorId, characterClass);
             var targetEntity = entityTracker.GetOrCreateTargetEntity(damageData.TargetId);
 

@@ -1,121 +1,83 @@
-using AionDpsMeter.Core.Models;
 using AionDpsMeter.Services.Models;
 
 namespace AionDpsMeter.Services.Services.Session
 {
-    /// <summary>
-    /// Pure computation: aggregates damage events into <see cref="PlayerStats"/> and <see cref="SkillStats"/>.
-    /// </summary>
+ 
     public static class DamageStatisticsCalculator
     {
-        /// <summary>
-        /// Calculates per-player combat stats from their damage history, filtered to the active target.
-        /// </summary>
-        public static void UpdatePlayerStats(PlayerStats stats, IReadOnlyList<PlayerDamage> damageHistory, int activeTargetId, long totalCombatDamage)
+        public static PlayerStats ComputePlayerStats(PlayerSession session, long totalCombatDamage)
         {
-            long totalDamage = 0;
-            int hitCount = 0, criticalHits = 0, backAttacks = 0, perfectHits = 0, doubleDamageHits = 0, parryHits = 0;
-            var firstHit = DateTime.MaxValue;
-            var lastHit = DateTime.MinValue;
+            var hits = session.Hits;
 
-            foreach (var hit in damageHistory)
+            var nonDotHits = hits.Where(h => !h.IsDot).ToList();
+            int hitCount = nonDotHits.Count;
+
+            var duration = session.FirstHit.HasValue && session.LastHit.HasValue
+                ? Math.Max((session.LastHit.Value - session.FirstHit.Value).TotalSeconds, 0.1)
+                : 0.1;
+
+            return new PlayerStats
             {
-                if (hit.TargetEntity.Id != activeTargetId) continue;
-
-                totalDamage += hit.Damage;
-                if (hit.DateTime < firstHit) firstHit = hit.DateTime;
-                if (hit.DateTime > lastHit) lastHit = hit.DateTime;
-
-                if(hit.IsDot) continue;
-                hitCount++;
-                if (hit.IsCritical) criticalHits++;
-                if (hit.IsBackAttack) backAttacks++;
-                if (hit.IsPerfect) perfectHits++;
-                if (hit.IsDoubleDamage) doubleDamageHits++;
-                if (hit.IsParry) parryHits++;
-            }
-
-            stats.TotalDamage = totalDamage;
-            stats.HitCount = hitCount;
-            stats.CriticalHits = criticalHits;
-            stats.BackAttacks = backAttacks;
-            stats.PerfectHits = perfectHits;
-            stats.DoubleDamageHits = doubleDamageHits;
-            stats.ParryHits = parryHits;
-
-            if (hitCount == 0)
-            {
-                stats.DamagePerSecond = 0;
-                stats.DamagePercentage = 0;
-                return;
-            }
-
-            stats.FirstHit = firstHit;
-            stats.LastHit = lastHit;
-
-            var duration = (lastHit - firstHit).TotalSeconds;
-            if (duration < 0.1) duration = 0.1;
-
-            stats.DamagePerSecond = totalDamage / duration;
-            stats.DamagePercentage = totalCombatDamage > 0
-                ? (double)totalDamage / totalCombatDamage * 100
-                : 0;
+                PlayerId = session.PlayerId,
+                PlayerName = session.PlayerName,
+                PlayerIcon = session.PlayerIcon,
+                ClassName = session.ClassName,
+                ClassIcon = session.ClassIcon,
+                IsUser = session.IsUser,
+                CombatPower = session.CombatPower,
+                ServerName = session.ServerName,
+                TotalDamage = session.TotalDamage,
+                HitCount = hitCount,
+                CriticalHits = nonDotHits.Count(h => h.IsCritical),
+                BackAttacks = nonDotHits.Count(h => h.IsBackAttack),
+                PerfectHits = nonDotHits.Count(h => h.IsPerfect),
+                DoubleDamageHits = nonDotHits.Count(h => h.IsDoubleDamage),
+                ParryHits = nonDotHits.Count(h => h.IsParry),
+                DamagePerSecond = session.TotalDamage / duration,
+                DamagePercentage = totalCombatDamage > 0
+                    ? (double)session.TotalDamage / totalCombatDamage * 100
+                    : 0,
+                FirstHit = session.FirstHit ?? default,
+                LastHit = session.LastHit ?? default,
+            };
         }
 
-        /// <summary>
-        /// Builds a sorted list of per-skill stats from a player's damage history, filtered to the active target.
-        /// </summary>
-        public static IReadOnlyCollection<SkillStats> CalculateSkillStats(
-            IReadOnlyList<PlayerDamage> damageHistory,
-            int activeTargetId,
-            TimeSpan playerCombatDuration,
-            long playerTotalDamage)
+        public static IReadOnlyCollection<SkillStats> ComputeSkillStats(PlayerSession session)
         {
-            var skillMap = new Dictionary<long, SkillStats>();
+            var duration = session.FirstHit.HasValue && session.LastHit.HasValue
+                ? Math.Max((session.LastHit.Value - session.FirstHit.Value).TotalSeconds, 0.1)
+                : 0.1;
 
-            foreach (var hit in damageHistory)
-            {
-                if (hit.TargetEntity.Id != activeTargetId) continue;
-
-                if (!skillMap.TryGetValue(hit.Skill.Id, out var skill))
+            return session.Hits
+                .GroupBy(h => h.Skill.Id)
+                .Select(g =>
                 {
-                    skill = new SkillStats
+                    var nonDot = g.Where(h => !h.IsDot).ToList();
+                    long totalDmg = g.Sum(h => h.Damage);
+                    return new SkillStats
                     {
-                        SkillId = hit.Skill.Id,
-                        SkillName = hit.Skill.Name,
-                        SkillIcon = hit.Skill.Icon,
-                        SpecializationFlags = hit.Skill.SpecializationFlags,
-                        MinHit = long.MaxValue,
+                        SkillId = g.Key,
+                        SkillName = g.First().Skill.Name,
+                        SkillIcon = g.First().Skill.Icon,
+                        SpecializationFlags = g.First().Skill.SpecializationFlags,
+                        IsDot = g.All(h => h.IsDot),
+                        TotalDamage = totalDmg,
+                        HitCount = g.Count(),
+                        CriticalHits = nonDot.Count(h => h.IsCritical),
+                        BackAttacks = nonDot.Count(h => h.IsBackAttack),
+                        PerfectHits = nonDot.Count(h => h.IsPerfect),
+                        DoubleDamageHits = nonDot.Count(h => h.IsDoubleDamage),
+                        ParryHits = nonDot.Count(h => h.IsParry),
+                        MinHit = g.Min(h => h.Damage),
+                        MaxHit = g.Max(h => h.Damage),
+                        DamagePerSecond = totalDmg / duration,
+                        DamagePercentage = session.TotalDamage > 0
+                            ? (double)totalDmg / session.TotalDamage * 100
+                            : 0,
                     };
-                    skillMap[hit.Skill.Id] = skill;
-                }
-
-                skill.TotalDamage += hit.Damage;
-                skill.HitCount++;
-                skill.IsDot = hit.IsDot;
-                if (hit.IsCritical) skill.CriticalHits++;
-                if (hit.IsBackAttack) skill.BackAttacks++;
-                if (hit.IsPerfect) skill.PerfectHits++;
-                if (hit.IsDoubleDamage) skill.DoubleDamageHits++;
-                if (hit.IsParry) skill.ParryHits++;
-                if (hit.Damage < skill.MinHit) skill.MinHit = hit.Damage;
-                if (hit.Damage > skill.MaxHit) skill.MaxHit = hit.Damage;
-            }
-
-            var durationSeconds = playerCombatDuration.TotalSeconds;
-            if (durationSeconds < 0.1) durationSeconds = 0.1;
-
-            foreach (var skill in skillMap.Values)
-            {
-                skill.DamagePercentage = playerTotalDamage > 0
-                    ? (double)skill.TotalDamage / playerTotalDamage * 100
-                    : 0;
-                skill.DamagePerSecond = skill.TotalDamage / durationSeconds;
-            }
-
-            var result = new List<SkillStats>(skillMap.Values);
-            result.Sort((a, b) => b.TotalDamage.CompareTo(a.TotalDamage));
-            return result;
+                })
+                .OrderByDescending(s => s.TotalDamage)
+                .ToList();
         }
     }
 }

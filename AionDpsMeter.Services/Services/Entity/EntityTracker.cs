@@ -65,6 +65,7 @@ namespace AionDpsMeter.Services.Services.Entity
         {
             if (playerEntities.TryGetValue(entityId, out var entity))
             {
+                if (entity.CharacterClass == null) entity.CharacterClass = characterClass;
                 return entity;
             }
 
@@ -176,7 +177,7 @@ namespace AionDpsMeter.Services.Services.Entity
             return summons.TryGetValue(summonId, out var ownerId) ? ownerId : null;
         }
 
-        public Core.Models.Entity? GetPlayerEntity(int entityId)
+        public Player? GetPlayerEntity(int entityId)
         {
             return playerEntities.GetValueOrDefault(entityId);
         }

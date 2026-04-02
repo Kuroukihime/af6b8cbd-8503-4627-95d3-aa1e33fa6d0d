@@ -2,6 +2,7 @@ using AionDpsMeter.Core.Models;
 using AionDpsMeter.Services.Services.Session;
 using AionDpsMeter.Services.Services.Settings;
 using AionDpsMeter.UI.Utils;
+using AionDpsMeter.UI.ViewModels.History;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
@@ -11,12 +12,15 @@ namespace AionDpsMeter.UI.ViewModels
 {
     public sealed partial class PlayerDetailsViewModel : ViewModelBase, IDisposable
     {
-        private readonly CombatSessionManager _sessionManager;
+        private readonly CombatSessionManager? _sessionManager;
         private readonly IAppSettingsService _settingsService;
         private readonly long _playerId;
         private readonly string? _playerIcon;
         private readonly string? _classIcon;
-        private readonly DispatcherTimer _updateTimer;
+        private readonly DispatcherTimer? _updateTimer;
+
+        /// <summary>True when this VM was created from a history snapshot — no live updates.</summary>
+        public bool IsSnapshot { get; }
 
         [ObservableProperty] private ObservableCollection<SkillStatsViewModel> _skills = new();
         [ObservableProperty] private ObservableCollection<CombatLogEntryViewModel> _combatLog = new();
@@ -69,8 +73,51 @@ namespace AionDpsMeter.UI.ViewModels
         public bool HasPlayerIcon => !string.IsNullOrEmpty(_playerIcon);
         public bool HasClassIcon  => !string.IsNullOrEmpty(_classIcon);
 
+        /// <summary>
+        /// Creates a snapshot (read-only, no timer) VM from a <see cref="HistoryPlayerViewModel"/>.
+        /// Used when opening player details from the history window.
+        /// </summary>
+        public static PlayerDetailsViewModel FromSnapshot(
+            HistoryPlayerViewModel player,
+            IAppSettingsService settingsService,
+            string targetName)
+        {
+            var vm = new PlayerDetailsViewModel(
+                sessionManager: null,
+                playerId: player.PlayerId,
+                playerName: player.PlayerName,
+                className: player.ClassName,
+                playerIcon: player.PlayerIcon,
+                classIcon: player.ClassIcon,
+                settingsService: settingsService,
+                combatPower: player.CombatPower,
+                serverName: player.ServerName,
+                isSnapshot: true);
+
+            // Populate from snapshot data immediately — no timer needed
+            vm.TotalDamageDisplay        = player.TotalDamageDisplay;
+            vm.DpsDisplay                = player.DpsDisplay;
+            vm.TotalHits                 = player.HitCount;
+            vm.CriticalRateDisplay       = player.CritRateDisplay;
+            vm.BackAttackRateDisplay     = player.BackAttackRateDisplay;
+            vm.PerfectRateDisplay        = player.PerfectRateDisplay;
+            vm.DoubleDamageRateDisplay   = player.DoubleDamageRateDisplay;
+            vm.ParryRateDisplay          = player.ParryRateDisplay;
+            vm.DamageContributionDisplay = player.DamagePercentDisplay;
+            vm.CombatDurationDisplay     = player.DurationDisplay;
+
+            vm.HasActiveTarget            = !string.IsNullOrEmpty(targetName);
+            vm.ActiveTargetName           = targetName;
+
+            foreach (var skill in player.Skills)
+                vm.Skills.Add(skill);
+            vm.SkillCount = vm.Skills.Count;
+
+            return vm;
+        }
+
         public PlayerDetailsViewModel(
-            CombatSessionManager sessionManager,
+            CombatSessionManager? sessionManager,
             long playerId,
             string playerName,
             string className,
@@ -78,8 +125,10 @@ namespace AionDpsMeter.UI.ViewModels
             string? classIcon,
             IAppSettingsService settingsService,
             int combatPower = 0,
-            string serverName = "")
+            string serverName = "",
+            bool isSnapshot = false)
         {
+            IsSnapshot         = isSnapshot;
             _sessionManager    = sessionManager;
             _settingsService   = settingsService;
             _playerId          = playerId;
@@ -94,11 +143,13 @@ namespace AionDpsMeter.UI.ViewModels
 
             _settingsService.SettingsChanged += OnSettingsChanged;
 
-            _updateTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(66) };
-            _updateTimer.Tick += OnUpdateTimerTick;
-            _updateTimer.Start();
-
-            RefreshData();
+            if (!isSnapshot)
+            {
+                _updateTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(66) };
+                _updateTimer.Tick += OnUpdateTimerTick;
+                _updateTimer.Start();
+                RefreshData();
+            }
         }
 
         private void OnSettingsChanged(object? sender, EventArgs e)
@@ -120,6 +171,8 @@ namespace AionDpsMeter.UI.ViewModels
 
         private void RefreshPlayerSummary()
         {
+            if (_sessionManager is null) return;
+
             var playerStats = _sessionManager.PlayerStats.FirstOrDefault(p => p.PlayerId == _playerId);
             if (playerStats is not null)
             {
@@ -163,6 +216,8 @@ namespace AionDpsMeter.UI.ViewModels
 
         private void RefreshSkills()
         {
+            if (_sessionManager is null) return;
+
             var skillStats = _sessionManager.GetPlayerSkillStats(_playerId);
             Skills.Clear();
             foreach (var skill in skillStats.OrderByDescending(s => s.TotalDamage))
@@ -172,6 +227,8 @@ namespace AionDpsMeter.UI.ViewModels
 
         private void RefreshCombatLog()
         {
+            if (_sessionManager is null) return;
+
             var combatLogEntries = _sessionManager.GetPlayerCombatLog(_playerId);
             CombatLog.Clear();
             foreach (var entry in combatLogEntries.Take(200))
@@ -181,7 +238,7 @@ namespace AionDpsMeter.UI.ViewModels
         public void Dispose()
         {
             _settingsService.SettingsChanged -= OnSettingsChanged;
-            _updateTimer.Stop();
+            _updateTimer?.Stop();
         }
     }
 }

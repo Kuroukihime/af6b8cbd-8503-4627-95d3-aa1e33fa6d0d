@@ -40,7 +40,6 @@ namespace AionDpsMeter.UI.ViewModels
 
             _packetService.DamageReceived    += OnPacketReceived;
             _packetService.PingUpdated       += OnPingUpdated;
-            _sessionManager.CombatAutoReset  += OnCombatAutoReset;
 
             // UI refresh at ~30 FPS
             _updateTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
@@ -156,7 +155,6 @@ namespace AionDpsMeter.UI.ViewModels
         {
             _packetService.DamageReceived   -= OnPacketReceived;
             _packetService.PingUpdated      -= OnPingUpdated;
-            _sessionManager.CombatAutoReset -= OnCombatAutoReset;
             _updateTimer?.Stop();
 
             if (_packetService is IDisposable disposable)

@@ -40,14 +40,6 @@
             </Setter>
         </Style>
 
-        <!-- Column header text style -->
-        <Style x:Key="ColHeader" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="10"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
-
         <!-- Virtualized table list with alternating rows -->
         <Style x:Key="TableListBox" TargetType="ListBox">
             <Setter Property="Background" Value="Transparent"/>

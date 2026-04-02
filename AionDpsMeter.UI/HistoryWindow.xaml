@@ -1,0 +1,185 @@
+﻿<Window x:Class="AionDpsMeter.UI.HistoryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:h="clr-namespace:AionDpsMeter.UI.ViewModels.History"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=h:HistoryViewModel}"
+        Title="History"
+        Height="480" Width="520"
+        MinHeight="200" MinWidth="300"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ResizeMode="CanResizeWithGrip"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+
+    <Border Background="{StaticResource PrimaryBackgroundBrush}"
+            BorderBrush="#30363D"
+            BorderThickness="1"
+            CornerRadius="6">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Title bar -->
+            <Border Grid.Row="0"
+                    Background="{StaticResource SecondaryBackgroundBrush}"
+                    CornerRadius="5,5,0,0"
+                    Padding="10,6"
+                    BorderBrush="#21262D" BorderThickness="0,0,0,1">
+                <Grid>
+                    <TextBlock Text="Combat History"
+                               FontSize="13" FontWeight="Bold"
+                               Foreground="{StaticResource PrimaryTextBrush}"
+                               VerticalAlignment="Center"/>
+                    <Button Content="✕"
+                            Width="22" Height="22" FontSize="10"
+                            HorizontalAlignment="Right"
+                            Click="CloseButton_Click"
+                            Style="{StaticResource ModernButtonStyle}"
+                            Background="#C42B1C" Padding="0"/>
+                </Grid>
+            </Border>
+
+            <!-- Column headers -->
+            <Border Grid.Row="1"
+                    Background="{StaticResource TertiaryBackgroundBrush}"
+                    BorderBrush="#21262D" BorderThickness="0,0,0,1"
+                    Padding="10,5">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="60"/>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="40"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text=""      FontSize="10" FontWeight="Bold" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="Mob"   FontSize="10" FontWeight="Bold" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                    <TextBlock Grid.Column="2" Text="Date"  FontSize="10" FontWeight="Bold" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="3" Text="Time"  FontSize="10" FontWeight="Bold" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="4" Text="Damage" FontSize="10" FontWeight="Bold" Foreground="{StaticResource SecondaryTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="5" Text="Players" FontSize="10" FontWeight="Bold" Foreground="{StaticResource SecondaryTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
+            <!-- Session list -->
+            <ListBox Grid.Row="2"
+                     ItemsSource="{Binding Sessions}"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     VirtualizingPanel.IsVirtualizing="True"
+                     VirtualizingPanel.VirtualizationMode="Recycling"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     AlternationCount="2">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Padding" Value="0"/>
+                        <Setter Property="Margin" Value="0"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                        <Setter Property="Background" Value="{StaticResource PrimaryBackgroundBrush}"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <Border Background="{TemplateBinding Background}">
+                                        <ContentPresenter/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                            <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                                <Setter Property="Background" Value="#131820"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border Background="Transparent"
+                                Padding="10,6"
+                                Cursor="Hand"
+                                MouseLeftButtonDown="SessionItem_Click">
+                            <Border.Tag>
+                                <Binding/>
+                            </Border.Tag>
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#1A4EC9B0"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="16"/>
+                                    <ColumnDefinition Width="2*"/>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="60"/>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="40"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- State indicator -->
+                                <Ellipse Grid.Column="0"
+                                         Width="8" Height="8"
+                                         VerticalAlignment="Center"
+                                         HorizontalAlignment="Left"
+                                         Fill="{Binding StateColor, Converter={StaticResource StringToBrushConverter}}"/>
+
+                                <!-- Mob name -->
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding TargetName}"
+                                           FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{StaticResource PrimaryTextBrush}"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"
+                                           Margin="4,0,4,0"/>
+
+                                <!-- Date -->
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding DateDisplay}"
+                                           FontSize="10" FontFamily="Consolas"
+                                           Foreground="{StaticResource SecondaryTextBrush}"
+                                           VerticalAlignment="Center"/>
+
+                                <!-- Duration -->
+                                <TextBlock Grid.Column="3"
+                                           Text="{Binding Duration}"
+                                           FontSize="10" FontFamily="Consolas"
+                                           Foreground="{StaticResource SecondaryTextBrush}"
+                                           VerticalAlignment="Center"/>
+
+                                <!-- Total damage -->
+                                <TextBlock Grid.Column="4"
+                                           Text="{Binding TotalDamageDisplay}"
+                                           FontSize="10" FontWeight="Bold"
+                                           Foreground="{StaticResource DamageBarBrush}"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Center"/>
+
+                                <!-- Player count -->
+                                <TextBlock Grid.Column="5"
+                                           Text="{Binding PlayerCount}"
+                                           FontSize="10"
+                                           Foreground="{StaticResource SecondaryTextBrush}"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+    </Border>
+</Window>

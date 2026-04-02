@@ -42,6 +42,7 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
                     <!-- Combat Duration -->
@@ -123,9 +124,20 @@
                             </Border>
                         </Grid>
                     </Grid>
-
-                    <!-- Reset Button -->
+                    <!-- History Button -->
                     <Button Grid.Column="3"
+                         Content="☰"
+                         Width="22"
+                         Height="22"
+                         FontSize="12"
+                         Margin="2,0"
+                         ToolTip="History"
+                         Click="HistoryButton_Click"
+                         Style="{StaticResource ModernButtonStyle}"
+                         Background="{StaticResource TertiaryBackgroundBrush}"
+                         Padding="0"/>      
+                    <!-- Reset Button -->
+                    <Button Grid.Column="4"
                             Content="↺"
                             Command="{Binding ResetDataCommand}"
                             Width="22"
@@ -138,7 +150,7 @@
                             Padding="0"/>
 
                     <!-- Settings Button -->
-                    <Button Grid.Column="4"
+                    <Button Grid.Column="5"
                             Content="⚙"
                             Width="22"
                             Height="22"
@@ -150,8 +162,10 @@
                             Background="{StaticResource TertiaryBackgroundBrush}"
                             Padding="0"/>
 
+                   
+
                     <!-- Minimize Button -->
-                    <Button Grid.Column="5"
+                    <Button Grid.Column="6"
                             Content="━"
                             Width="22"
                             Height="22"
@@ -163,7 +177,7 @@
                             Padding="0"/>
 
                     <!-- Close Button -->
-                    <Button Grid.Column="6"
+                    <Button Grid.Column="7"
                             Content="✕"
                             Width="22"
                             Height="22"
