@@ -104,7 +104,9 @@ namespace AionDpsMeter.UI.ViewModels
 
         private void UpdatePlayerStats()
         {
-            foreach (var stats in _sessionManager.PlayerStats)
+            var currentStats = _sessionManager.PlayerStats;
+
+            foreach (var stats in currentStats)
             {
                 var existing = Players.FirstOrDefault(p => p.PlayerId == stats.PlayerId);
                 if (existing is not null)
@@ -113,7 +115,8 @@ namespace AionDpsMeter.UI.ViewModels
                     Players.Add(new PlayerStatsViewModel(stats, _settingsService));
             }
 
-            var sorted = Players.Where(p => p.TotalDamage > 0)
+            var currentIds = currentStats.Select(s => s.PlayerId).ToHashSet();
+            var sorted = Players.Where(p => p.TotalDamage > 0 && currentIds.Contains(p.PlayerId))
                                  .OrderByDescending(p => p.TotalDamage)
                                  .ToList();
             Players.Clear();
