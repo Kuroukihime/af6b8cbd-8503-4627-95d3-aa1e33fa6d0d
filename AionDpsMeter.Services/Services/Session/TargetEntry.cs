@@ -1,5 +1,6 @@
 ﻿using AionDpsMeter.Core.Models;
 using AionDpsMeter.Services.Services.Entity;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace AionDpsMeter.Services.Services.Session
 {
@@ -11,6 +12,7 @@ namespace AionDpsMeter.Services.Services.Session
     public sealed class TargetEntry
     {
         private static readonly TimeSpan IdleTimeout = TimeSpan.FromSeconds(20);
+        private static readonly TimeSpan ScarecrowIdleTimeout = TimeSpan.FromSeconds(5);
 
         private readonly EntityTracker entityTracker;
         private readonly List<TargetCombatSession> history = new();
@@ -34,7 +36,7 @@ namespace AionDpsMeter.Services.Services.Session
         {
             var mob = entityTracker.GetTargetMob(damage.TargetEntity.Id) ?? damage.TargetEntity;
 
-            if (CurrentSession is not null && IsNewTry(mob))
+            if (CurrentSession is not null && IsNewTry(mob) || ShouldCompleteSession(damage.DateTime, mob))
             {
                 CompleteCurrentSession(damage.DateTime);
                 StartNewSession(mob, damage.DateTime);
@@ -51,8 +53,18 @@ namespace AionDpsMeter.Services.Services.Session
         {
             if (CurrentSession is null || CurrentSession.IsCompleted) return;
 
-            if (now - CurrentSession.LastHitTime > IdleTimeout)
-                CompleteCurrentSession(now);
+            if (ShouldCompleteSession(now)) CompleteCurrentSession(now);
+        }
+
+
+        private bool ShouldCompleteSession(DateTime now, Mob? currentMobState = null)
+        {
+            if (CurrentSession is null || CurrentSession.IsCompleted) return false;
+
+            if(currentMobState?.Name == "Training Scarecrow") 
+                return now - CurrentSession.LastHitTime > ScarecrowIdleTimeout;
+
+            return now - CurrentSession.LastHitTime > IdleTimeout;
         }
 
         public int CountRecentHits(DateTime cutoff)
