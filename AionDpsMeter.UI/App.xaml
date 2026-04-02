@@ -17,6 +17,7 @@
             <converters:StringToBrushConverter x:Key="StringToBrushConverter"/>
             <converters:IntToVisibilityConverter x:Key="IntToVisibilityConverter"/>
             <converters:SpecFlagsConverter x:Key="SpecFlagsConverter"/>
+            <converters:BoolToProgressBrushConverter x:Key="BoolToProgressBrushConverter"/>
 
             <!-- Colors – dark gaming theme -->
             <SolidColorBrush x:Key="PrimaryBackgroundBrush"   Color="#0D1117"/>
@@ -38,6 +39,12 @@
             <LinearGradientBrush x:Key="ProgressBarGradientBrush" StartPoint="0,0" EndPoint="1,0">
                 <GradientStop Color="#152B15" Offset="0"/>
                 <GradientStop Color="#238636" Offset="1"/>
+            </LinearGradientBrush>
+
+            <!-- Progress bar gradient for current user (left dark → right purple) -->
+            <LinearGradientBrush x:Key="ProgressBarUserGradientBrush" StartPoint="0,0" EndPoint="1,0">
+                <GradientStop Color="#1A0D2B" Offset="0"/>
+                <GradientStop Color="#7C3AED" Offset="1"/>
             </LinearGradientBrush>
 
             <!-- Default Button Style -->
@@ -68,6 +75,14 @@
                         </ControlTemplate>
                     </Setter.Value>
                 </Setter>
+            </Style>
+
+            <!-- Column header text style (shared by all table windows) -->
+            <Style x:Key="ColHeader" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="10"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
             </Style>
 
         </ResourceDictionary>

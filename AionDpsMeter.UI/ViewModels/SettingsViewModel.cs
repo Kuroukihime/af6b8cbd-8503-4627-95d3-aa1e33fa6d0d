@@ -10,15 +10,24 @@ namespace AionDpsMeter.UI.ViewModels
         [ObservableProperty]
         private bool _isPacketLoggingEnabled;
 
+        [ObservableProperty]
+        private bool _isNicknameHidden;
+
         public SettingsViewModel(IAppSettingsService settingsService)
         {
             _settingsService = settingsService;
             _isPacketLoggingEnabled = settingsService.IsPacketLoggingEnabled;
+            _isNicknameHidden = settingsService.IsNicknameHidden;
         }
 
         partial void OnIsPacketLoggingEnabledChanged(bool value)
         {
             _settingsService.IsPacketLoggingEnabled = value;
+        }
+
+        partial void OnIsNicknameHiddenChanged(bool value)
+        {
+            _settingsService.IsNicknameHidden = value;
         }
     }
 }

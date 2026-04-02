@@ -33,41 +33,18 @@ namespace AionDpsMeter.Core.Data
             Classes.Load(Path.Combine(dataDir, "classes.json"));
             Skills.Load(Path.Combine(dataDir, "skills.json"));
             Skills.LoadDotSkillIds(Path.Combine(dataDir, "dot_skill_ids.json"));
+            Skills.LoadHealingSkills(Path.Combine(dataDir, "healing_skill_ids.json"));
             Mobs.Load(Path.Combine(dataDir, "mobs.json"));
 
         }
-
+        public bool IsHealingSkill(int skillCode) => Skills.IsHealingSkill(skillCode);
         public bool IsDotDamageSkill(int skillCode) => Skills.IsDotDamageSkill(skillCode);
-
-        public Skill? GetSkillById(int skillCode) => Skills.GetById(skillCode);
 
         public Skill GetSkillOrDefault(int skillCode) => Skills.GetOrDefault(skillCode);
 
-        public bool[] DecodeSpecializationFlags(int rawCode, int baseCode) => Skills.DecodeSpecializationFlags(rawCode, baseCode);
-
-        public int NormalizeSkillCode(int rawPacketCode) => Skills.NormalizeSkillCode(rawPacketCode);
-
-        public bool ContainsSkillCode(int skillCode) => Skills.Contains(skillCode);
-
-        public string? GetSkillName(int skillCode) => Skills.GetName(skillCode);
-
-        public static bool IsSkillCodeInRange(int code) => SkillRepository.IsSkillCodeInRange(code);
-
-        public IEnumerable<Skill> GetAllSkills() => Skills.GetAll();
-
-       
-
-        public CharacterClass? GetClassById(int classId) => Classes.GetById(classId);
-
         public CharacterClass? GetClassBySkillCode(int skillCode) => Classes.GetBySkillCode(skillCode);
 
-        public CharacterClass GetClassOrDefault(int classId) => Classes.GetOrDefault(classId);
-
-        public IEnumerable<CharacterClass> GetAllClasses() => Classes.GetAll();
-
-       
         public string GetMobName(int mobId) => Mobs.GetName(mobId);
 
-        public bool IsMobBoss(int mobId) => Mobs.IsBoss(mobId);
     }
 }

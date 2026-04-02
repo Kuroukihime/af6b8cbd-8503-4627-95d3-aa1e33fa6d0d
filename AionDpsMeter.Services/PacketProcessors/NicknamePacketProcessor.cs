@@ -159,11 +159,13 @@ namespace AionDpsMeter.Services.PacketProcessors
         {
             int endOffset = startOffset + length;
 
+            //contains user name
             if (TryParseInfoTag1(data, endOffset, out PlayerInfoResult result))
             {
-                entityTracker.UpdatePlayerEntityName(result.EntityId, result.Name, ServerMap.GetName(result.ServerId));
+                entityTracker.UpdatePlayerEntityName(result.EntityId, result.Name, ServerMap.GetName(result.ServerId), true);
                 return;
             }
+            //contains other player names
             if (!TryParseInfoTag2(data, endOffset, out PlayerInfoResult result2))
                 return;
             entityTracker.UpdatePlayerEntityName(result2.EntityId, result2.Name, ServerMap.GetName(result2.ServerId));
