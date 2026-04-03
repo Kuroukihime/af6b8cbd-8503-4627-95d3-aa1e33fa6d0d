@@ -62,7 +62,7 @@ jobs:
         shell: pwsh
         run: |
           $version = "${{ steps.get_version.outputs.VERSION }}"
-          Compress-Archive -Path ./publish/* -DestinationPath "AionDpsMeter-v$version-win-x64.zip"
+          Compress-Archive -Path ./publish/* -DestinationPath "Aion2DpsMeter-v$version-win-x64.zip"
 
       - name: Create GitHub Release
         if: steps.check_release.outputs.RELEASE_EXISTS == 'false'
