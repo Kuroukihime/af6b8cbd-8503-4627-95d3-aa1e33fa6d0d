@@ -1,0 +1,79 @@
+name: Build and Publish Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    permissions:
+      contents: write 
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Extract version from csproj
+        id: get_version
+        shell: pwsh
+        run: |
+          [xml]$csproj = Get-Content "AionDpsMeter.UI/AionDpsMeter.UI.csproj"
+          $version = $csproj.Project.PropertyGroup.AssemblyVersion
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          echo "Extracted version: $version"
+
+      - name: Check if release already exists
+        id: check_release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $version = "${{ steps.get_version.outputs.VERSION }}"
+          $tag = "v$version"
+          gh release view $tag --repo ${{ github.repository }} | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+            echo "Release $tag already exists. Skipping."
+            echo "RELEASE_EXISTS=true" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "Release $tag does not exist. Proceeding."
+            echo "RELEASE_EXISTS=false" >> $env:GITHUB_OUTPUT
+          }
+          exit 0
+
+      - name: Build self-contained single-file win-x64
+        if: steps.check_release.outputs.RELEASE_EXISTS == 'false'
+        shell: pwsh
+        run: |
+          dotnet publish AionDpsMeter.UI/AionDpsMeter.UI.csproj `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            --output ./publish
+
+      - name: Archive build output
+        if: steps.check_release.outputs.RELEASE_EXISTS == 'false'
+        shell: pwsh
+        run: |
+          $version = "${{ steps.get_version.outputs.VERSION }}"
+          Compress-Archive -Path ./publish/* -DestinationPath "AionDpsMeter-v$version-win-x64.zip"
+
+      - name: Create GitHub Release
+        if: steps.check_release.outputs.RELEASE_EXISTS == 'false'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $version = "${{ steps.get_version.outputs.VERSION }}"
+          $tag = "v$version"
+          gh release create $tag `
+            --repo ${{ github.repository }} `
+            --title "Release $tag" `
+            --notes "Release $tag" `
+            "Aion2DpsMeter-v$version-win-x64.zip"
