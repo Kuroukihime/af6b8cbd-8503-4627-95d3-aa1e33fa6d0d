@@ -124,7 +124,7 @@ namespace AionDpsMeter.UI
 
             historyWindow = new HistoryWindow(settingsService)
             {
-                DataContext = new AionDpsMeter.UI.ViewModels.History.HistoryViewModel(snapshot),
+                DataContext = new AionDpsMeter.UI.ViewModels.History.HistoryViewModel(snapshot, settingsService),
                 Owner = this
             };
 

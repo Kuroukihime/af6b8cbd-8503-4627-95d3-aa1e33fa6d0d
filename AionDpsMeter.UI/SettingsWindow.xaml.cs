@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
 
@@ -20,5 +21,12 @@ namespace AionDpsMeter.UI
         {
             this.Close();
         }
+
+        private void ThresholdTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            e.Handled = !IsDigitsOnly(e.Text);
+        }
+
+        private static bool IsDigitsOnly(string text) => Regex.IsMatch(text, @"^\d+$");
     }
 }

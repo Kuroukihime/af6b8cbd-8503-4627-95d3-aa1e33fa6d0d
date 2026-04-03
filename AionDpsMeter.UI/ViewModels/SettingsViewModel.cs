@@ -13,11 +13,15 @@ namespace AionDpsMeter.UI.ViewModels
         [ObservableProperty]
         private bool _isNicknameHidden;
 
+        [ObservableProperty]
+        private int _historyDamageThreshold;
+
         public SettingsViewModel(IAppSettingsService settingsService)
         {
             _settingsService = settingsService;
             _isPacketLoggingEnabled = settingsService.IsPacketLoggingEnabled;
             _isNicknameHidden = settingsService.IsNicknameHidden;
+            _historyDamageThreshold = settingsService.HistoryDamageThreshold;
         }
 
         partial void OnIsPacketLoggingEnabledChanged(bool value)
@@ -28,6 +32,11 @@ namespace AionDpsMeter.UI.ViewModels
         partial void OnIsNicknameHiddenChanged(bool value)
         {
             _settingsService.IsNicknameHidden = value;
+        }
+
+        partial void OnHistoryDamageThresholdChanged(int value)
+        {
+            _settingsService.HistoryDamageThreshold = Math.Clamp(value, 0, int.MaxValue);
         }
     }
 }

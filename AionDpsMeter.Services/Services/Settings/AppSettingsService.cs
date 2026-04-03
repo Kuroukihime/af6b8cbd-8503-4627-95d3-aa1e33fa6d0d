@@ -48,6 +48,23 @@ namespace AionDpsMeter.Services.Services.Settings
             }
         }
 
+        public int HistoryDamageThreshold
+        {
+            get { lock (_lock) return _data.HistoryDamageThreshold; }
+            set
+            {
+                bool changed;
+                lock (_lock)
+                {
+                    int clamped = Math.Clamp(value, 0, int.MaxValue);
+                    changed = _data.HistoryDamageThreshold != clamped;
+                    _data.HistoryDamageThreshold = clamped;
+                    if (changed) Save();
+                }
+                if (changed) SettingsChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
         public double? WindowLeft
         {
             get { lock (_lock) return _data.WindowLeft; }
@@ -103,6 +120,9 @@ namespace AionDpsMeter.Services.Services.Settings
 
             [JsonPropertyName("isNicknameHidden")]
             public bool IsNicknameHidden { get; set; }
+
+            [JsonPropertyName("historyDamageThreshold")]
+            public int HistoryDamageThreshold { get; set; } = 0;
 
             [JsonPropertyName("windowLeft")]
             public double? WindowLeft { get; set; }

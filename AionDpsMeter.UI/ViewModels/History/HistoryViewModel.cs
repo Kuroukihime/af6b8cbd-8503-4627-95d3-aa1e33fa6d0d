@@ -1,4 +1,5 @@
 using AionDpsMeter.Services.Services.Session;
+using AionDpsMeter.Services.Services.Settings;
 
 namespace AionDpsMeter.UI.ViewModels.History
 {
@@ -8,9 +9,12 @@ namespace AionDpsMeter.UI.ViewModels.History
 
         public bool HasSessions => Sessions.Count > 0;
 
-        public HistoryViewModel(IReadOnlyList<HistorySessionSnapshot> snapshots)
+        public HistoryViewModel(IReadOnlyList<HistorySessionSnapshot> snapshots, IAppSettingsService settingsService)
         {
+            int threshold = settingsService.HistoryDamageThreshold;
+
             Sessions = snapshots
+                .Where(s => s.PlayerStats.Sum(p => p.TotalDamage) >= threshold)
                 .Select(s => new HistoryEntryViewModel(s))
                 .ToList();
         }

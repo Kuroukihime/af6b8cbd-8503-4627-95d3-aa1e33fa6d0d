@@ -4,6 +4,7 @@ namespace AionDpsMeter.Services.Services.Settings
     {
         bool IsPacketLoggingEnabled { get; set; }
         bool IsNicknameHidden { get; set; }
+        int HistoryDamageThreshold { get; set; }
 
         // Main window position & size
         double? WindowLeft { get; set; }
