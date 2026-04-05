@@ -4,6 +4,7 @@ using AionDpsMeter.Services.Services.Entity;
 using Microsoft.Extensions.Logging;
 using System.Text;
 using AionDpsMeter.Core.Models;
+using System.Diagnostics;
 
 namespace AionDpsMeter.Services.PacketProcessors
 {
@@ -35,6 +36,12 @@ namespace AionDpsMeter.Services.PacketProcessors
             if ( packet.Length < 4) return;
 
             var lenVarInt = packet.ReadVarInt().Length;
+
+            if (packet[lenVarInt] == 0x20 && packet[lenVarInt + 1] == 0x36)
+            {
+                ProcessIdLinkinPacket(packet, lenVarInt);
+                return;
+            }
             if (packet[lenVarInt] == 0x02 && packet[lenVarInt + 1] == 0x97)
             {
                 ProcessPartyPacket(packet, lenVarInt);
@@ -43,12 +50,23 @@ namespace AionDpsMeter.Services.PacketProcessors
             TryExtractAndApplyPlayerInfo(packet, 0, packet.Length);
         }
 
+        private void ProcessIdLinkinPacket(byte[] packet, int lenVarInt)
+        {    
+            var playerIdVarInt = packet.ReadVarInt(lenVarInt+4);
+            var playerId = playerIdVarInt.Value;
+            var globalId = packet.ReadUInt32Le(lenVarInt+ playerIdVarInt.Length +8);
+
+            var linkResult = entityTracker.LinkBaseToSessionPlayerEntity(globalId, playerId);
+
+            logger.LogInformation($"Player globalId {globalId} => sessionId {playerId}. Link result {linkResult}");
+        }
 
         private void ProcessPartyPacket(byte[] packet, int lenVarInt )
         {
-            List<Player> list = ParsePartyMemberBlocks(packet, lenVarInt + 2);
+            List<Player> list = ParsePartyMemberBlocksStructured(packet, lenVarInt + 2);
             if (list.Count > 0)
             {
+                Trace.WriteLine(BitConverter.ToString(packet));
                 foreach (var partyMember in list)
                 {
                     entityTracker.RegisterBasePlayerEntity(partyMember);
@@ -56,104 +74,108 @@ namespace AionDpsMeter.Services.PacketProcessors
             }
         }
 
-        private List<Player> ParsePartyMemberBlocks(byte[] packet, int dataOffset)
+        private List<Player> ParsePartyMemberBlocksStructured(byte[] packet, int dataOffset)
         {
             var results = new List<Player>();
-            var seenCharacterIds = new HashSet<uint>();
 
-            int pos = dataOffset + 11;
+            // Block layout from blockStart:
+            //  +0           memberNum   (1B)
+            //  +1           id          (4B LE)
+            //  +5           padding     (2B: 00 00)
+            //  +7           server1     (2B LE)
+            //  +9           nickLen     (1B)
+            //  +10          nickname    (nickLen B)
+            //  +10+nickLen  jobcode     (4B LE)
+            //  +14+nickLen  level       (4B LE)  ← anchor: 2D-00-00-00
+            //  +18+nickLen  combatPower (4B LE)
+            //  +22+nickLen  server2     (2B LE)
+            //  tail has variable length data
 
-            while (pos < packet.Length)
-            {
-                int nameLength = packet[pos];
+            byte[] levelMarker = [0x2D, 0x00, 0x00, 0x00];
+            int searchFrom = dataOffset;
+            int expectedMemberNum = 1;
 
-                if (nameLength < 1 || nameLength > 48)
+            while (true)
+            {         
+                int levelPos = packet.IndexOfArray(levelMarker, searchFrom);
+                if (levelPos < 0)
+                    break;
+
+                // Resolve blockStart: levelPos = blockStart + 14 + nickLen
+                int blockStart = -1;
+                int foundNickLen = -1;
+                for (int nickLen = 1; nickLen <= 48; nickLen++)
                 {
-                    pos++;
+                    int bs = levelPos - 14 - nickLen;
+                    if (bs < dataOffset || bs + 24 + nickLen > packet.Length)
+                        continue;
+
+                    if (packet[bs + 9] != nickLen)
+                        continue;
+
+                    int s1 = packet[bs + 7] | (packet[bs + 8] << 8);
+                    if (!ServerMap.IsValidId(s1))
+                        continue;
+
+                    int server2Pos = levelPos + 8;
+                    if (server2Pos + 2 > packet.Length)
+                        continue;
+                    int s2 = packet[server2Pos] | (packet[server2Pos + 1] << 8);
+                    if (!ServerMap.IsValidId(s2))
+                        continue;
+
+                    if (packet[bs] != expectedMemberNum)
+                        continue;
+
+                    blockStart = bs;
+                    foundNickLen = nickLen;
+                    break;
+                }
+
+                if (blockStart < 0)
+                {       
+                    if (results.Count > 0)
+                        break;
+                    searchFrom = levelPos + 1;
                     continue;
                 }
 
-                int nameStart = pos + 1;
-                int afterName = nameStart + nameLength;
-
-                if (afterName + 12 > packet.Length)
-                {
-                    pos++;
-                    continue;
-                }
+                int id = packet.ReadUInt32Le(blockStart + 1);
+                if (id == 0)
+                    break;
 
                 string nickname;
                 try
                 {
-                    nickname = DecodeGameString(packet, nameStart, nameLength);
+                    nickname = DecodeGameString(packet, blockStart + 10, foundNickLen);
                 }
                 catch
                 {
-                    pos++;
-                    continue;
+                    break;
                 }
 
-                int jobCode = packet.ReadUInt32Le(afterName);
-                int level = packet.ReadUInt32Le(afterName + 4);
-                int combatPower = packet.ReadUInt32Le(afterName + 8);
+                int server1 = packet[blockStart + 7] | (packet[blockStart + 8] << 8);
+                int level = packet.ReadUInt32Le(blockStart + 14 + foundNickLen);
+                int combatPower = packet.ReadUInt32Le(blockStart + 18 + foundNickLen);
 
-                if (level < 1 || level > 55)
-                {
-                    pos++;
-                    continue;
-                }
-
-                if (combatPower > 9_999_999)
-                {
-                    pos++;
-                    continue;
-                }
-
-                if (pos < 8)
-                {
-                    pos++;
-                    continue;
-                }
-
-                uint characterId = (uint)packet.ReadUInt32Le(pos - 8);
-                int serverId = packet[pos - 2] | (packet[pos - 1] << 8);
-
-                if (string.IsNullOrEmpty(ServerMap.GetName(serverId)))
-                {
-                    if (afterName + 14 <= packet.Length)
-                        serverId = packet[afterName + 12] | (packet[afterName + 13] << 8);
-
-                    if (string.IsNullOrEmpty(ServerMap.GetName(serverId)))
-                    {
-                        pos++;
-                        continue;
-                    }
-                }
-
-                if (characterId == 0 || seenCharacterIds.Contains(characterId))
-                {
-                    pos++;
-                    continue;
-                }
-
-                seenCharacterIds.Add(characterId);
                 results.Add(new Player
                 {
-                    Id = (int)characterId,
-                    ServerId = serverId,
-                    ServerName = ServerMap.GetName(serverId),
+                    Id = id,
+                    ServerId = server1,
+                    ServerName = ServerMap.GetName(server1),
                     Name = nickname,
                     CharactedLevel = level,
                     CombatPower = combatPower
                 });
 
-                pos = afterName + 12;
+                expectedMemberNum++;
+                searchFrom = levelPos + 4; 
             }
 
             return results;
         }
 
-
+       
 
         private void TryExtractAndApplyPlayerInfo(byte[] data, int startOffset, int length)
         {

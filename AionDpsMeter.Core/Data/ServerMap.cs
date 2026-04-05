@@ -56,4 +56,6 @@ public static class ServerMap
 		}
 		return value;
 	}
+
+	public static bool IsValidId(int id) => Servers.ContainsKey(id);
 }

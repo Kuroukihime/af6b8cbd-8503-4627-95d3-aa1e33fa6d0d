@@ -98,6 +98,13 @@ namespace AionDpsMeter.Services.Services.Session
         public int CountRecentHits(DateTime cutoff)
             => playerSessions.Values.Sum(s => s.CountHitsAfter(cutoff));
 
+        public DateTime? GetUserLastHitTime()
+            => playerSessions.Values
+                .Where(s => s.IsUser && s.LastHit.HasValue)
+                .Select(s => s.LastHit!.Value)
+                .Cast<DateTime?>()
+                .Max();
+
         public void Reset()
         {
             foreach (var session in playerSessions.Values)

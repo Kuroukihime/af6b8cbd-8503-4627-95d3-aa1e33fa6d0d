@@ -1,4 +1,6 @@
 using AionDpsMeter.Core.Models;
+using System.Numerics;
+using System.Xml.Linq;
 
 namespace AionDpsMeter.Services.Services.Entity
 {
@@ -16,6 +18,8 @@ namespace AionDpsMeter.Services.Services.Entity
         private readonly Dictionary<int, Player> playerEntities = [];
         private readonly Dictionary<int, Mob> targetEntities = [];
         private readonly Dictionary<int, int> summons = []; // summonId -> ownerId
+
+        private string CurrentUserName { get; set; } = string.Empty;
 
 
         public Mob GetOrCreateTargetEntity(int entityId)
@@ -86,6 +90,10 @@ namespace AionDpsMeter.Services.Services.Entity
 
             basePlayerEntities.TryGetValue(name, out var basePlayerEntity);
 
+            if(isUser) CurrentUserName = name;
+
+            var isCurrentUser = isUser || name == CurrentUserName;
+
             if (playerEntities.TryGetValue(entityId, out var existing))
             {
                 playerEntities[entityId] = new Player
@@ -98,7 +106,7 @@ namespace AionDpsMeter.Services.Services.Entity
                     ServerName = basePlayerEntity?.ServerName ?? serverName,
                     CombatPower = basePlayerEntity?.CombatPower ?? 0,
                     ServerId = basePlayerEntity?.ServerId ?? 0,
-                    IsUser = isUser,
+                    IsUser = isCurrentUser,
                 };
             }
             else
@@ -112,7 +120,7 @@ namespace AionDpsMeter.Services.Services.Entity
                     ServerName = basePlayerEntity?.ServerName ?? serverName,
                     CombatPower = basePlayerEntity?.CombatPower ?? 0,
                     ServerId = basePlayerEntity?.ServerId ?? 0,
-                    IsUser = isUser,
+                    IsUser = isCurrentUser,
                 };
             }
         }
@@ -122,11 +130,54 @@ namespace AionDpsMeter.Services.Services.Entity
             basePlayerEntities[player.Name] = player;
         }
 
+        public bool LinkBaseToSessionPlayerEntity(int globalId, int sessionId)
+        {
+            var baseEntity = basePlayerEntities.FirstOrDefault(r => r.Value.Id == globalId).Value;
+            if(baseEntity == null) return false;
+            playerEntities.TryGetValue(sessionId, out var sessionPlayerEntity);
+            var isCurrentUser = baseEntity.Name == CurrentUserName;
+            if (sessionPlayerEntity == null)
+            {
+             
+                playerEntities[sessionId] = new Player
+                {
+                    Id = sessionId,
+                    Name = baseEntity.Name,
+                    Icon = null,
+                    CharacterClass = baseEntity.CharacterClass,
+                    CharactedLevel = baseEntity.CharactedLevel,
+                    CombatPower = baseEntity.CombatPower,
+                    ServerId = baseEntity.ServerId,
+                    ServerName = baseEntity.ServerName,
+                    IsUser = isCurrentUser
+                };
+            }
+            else
+            {
+                playerEntities[baseEntity.Id] = new Player
+                {
+                    Id = sessionPlayerEntity.Id,
+                    Name = baseEntity.Name,
+                    Icon = null,
+                    CharacterClass = sessionPlayerEntity.CharacterClass,
+                    CharactedLevel = baseEntity.CharactedLevel,
+                    CombatPower = baseEntity.CombatPower,
+                    ServerId = baseEntity.ServerId,
+                    ServerName = baseEntity.ServerName,
+                    IsUser = isCurrentUser
+
+                };
+            }
+
+            return true;
+
+        }
+
         public void UpdatePlayerEntity(Player player)
         {
+            var isCurrentUser = player.Name == CurrentUserName;
             if (playerEntities.TryGetValue(player.Id, out var existing))
-            {
-                // Since Entity is immutable (init-only), we need to replace it
+            {          
                 playerEntities[player.Id] = new Player
                 {
                     Id = player.Id,
@@ -136,7 +187,8 @@ namespace AionDpsMeter.Services.Services.Entity
                     CharactedLevel = player.CharactedLevel,
                     CombatPower = player.CombatPower,
                     ServerId = player.ServerId,
-                    ServerName = player.ServerName
+                    ServerName = player.ServerName, 
+                    IsUser = isCurrentUser
                 };
             }
             else
@@ -150,7 +202,8 @@ namespace AionDpsMeter.Services.Services.Entity
                     CharactedLevel = player.CharactedLevel,
                     CombatPower = player.CombatPower,
                     ServerId = player.ServerId,
-                    ServerName = player.ServerName
+                    ServerName = player.ServerName,
+                    IsUser = isCurrentUser
                 };
             }
         }

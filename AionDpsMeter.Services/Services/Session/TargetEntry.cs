@@ -70,6 +70,9 @@ namespace AionDpsMeter.Services.Services.Session
         public int CountRecentHits(DateTime cutoff)
             => CurrentSession?.CountRecentHits(cutoff) ?? 0;
 
+        public DateTime? GetUserLastHitTime()
+            => CurrentSession?.GetUserLastHitTime();
+
         public void Reset()
         {
             CurrentSession?.Reset();
